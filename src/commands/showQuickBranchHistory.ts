@@ -41,7 +41,7 @@ export class ShowQuickBranchHistoryCommand extends ActiveEditorCachedCommand {
 			args.branch === undefined ? undefined : BranchHistoryQuickPick.showProgress(args.branch);
 		try {
 			const repoPath =
-				args.repoPath ||
+				args.repoPath ??
 				(await getRepoPathOrActiveOrPrompt(
 					gitUri,
 					editor,

@@ -60,12 +60,26 @@ export class ShowQuickCommitDetailsCommand extends ActiveEditorCachedCommand {
 	}
 
 	async execute(editor?: TextEditor, uri?: Uri, args?: ShowQuickCommitDetailsCommandArgs) {
-		uri = getCommandUri(uri, editor);
-		if (uri == null) return undefined;
+		let gitUri;
+		let repoPath;
+		if (args?.commit == null) {
+			uri = getCommandUri(uri, editor);
+			if (uri == null) return undefined;
 
-		const gitUri = await GitUri.fromUri(uri);
+			gitUri = await GitUri.fromUri(uri);
+			repoPath = gitUri.repoPath;
+		} else {
+			if (args.sha == null) {
+				args.sha = args.commit.sha;
+			}
 
-		let repoPath = gitUri.repoPath;
+			gitUri = args.commit.toGitUri();
+			repoPath = args.commit.repoPath;
+
+			if (uri == null) {
+				uri = args.commit.uri;
+			}
+		}
 
 		args = { ...args };
 		if (args.sha === undefined) {

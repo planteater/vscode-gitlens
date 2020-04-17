@@ -14,6 +14,7 @@ import { LineHoverController } from './hovers/lineHoverController';
 import { Keyboard } from './keyboard';
 import { Logger } from './logger';
 import { StatusBarController } from './statusbar/statusBarController';
+import { GitTerminalLinkHandler } from './terminal/linkHandler';
 import { GitDocumentTracker } from './trackers/gitDocumentTracker';
 import { GitLineTracker } from './trackers/gitLineTracker';
 import { CompareView } from './views/compareView';
@@ -119,6 +120,7 @@ export class Container {
 			});
 		}
 
+		context.subscriptions.push(new GitTerminalLinkHandler());
 		context.subscriptions.push(new GitFileSystemProvider());
 
 		context.subscriptions.push(configuration.onWillChange(this.onConfigurationChanging, this));

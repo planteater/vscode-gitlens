@@ -9,6 +9,8 @@ import { ActiveEditorCachedCommand, command, Commands, getCommandUri, getRepoPat
 import { ShowQuickBranchHistoryCommandArgs } from './showQuickBranchHistory';
 
 export interface ShowQuickCurrentBranchHistoryCommandArgs {
+	repoPath?: string;
+
 	goBackCommand?: CommandQuickPickItem;
 }
 
@@ -22,11 +24,13 @@ export class ShowQuickCurrentBranchHistoryCommand extends ActiveEditorCachedComm
 		uri = getCommandUri(uri, editor);
 
 		try {
-			const repoPath = await getRepoPathOrActiveOrPrompt(
-				uri,
-				editor,
-				`Show current branch history for which repository${GlyphChars.Ellipsis}`,
-			);
+			const repoPath =
+				args?.repoPath ??
+				(await getRepoPathOrActiveOrPrompt(
+					uri,
+					editor,
+					`Show current branch history for which repository${GlyphChars.Ellipsis}`,
+				));
 			if (!repoPath) return undefined;
 
 			const branch = await Container.git.getBranch(repoPath);
