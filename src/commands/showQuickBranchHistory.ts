@@ -6,6 +6,7 @@ import { executeGitCommand } from './gitCommands';
 import { GitUri } from '../git/gitUri';
 
 export interface ShowQuickBranchHistoryCommandArgs {
+	repoPath?: string;
 	branch?: string;
 }
 
@@ -29,17 +30,19 @@ export class ShowQuickBranchHistoryCommand extends ActiveEditorCachedCommand {
 
 		const gitUri = uri && (await GitUri.fromUri(uri));
 
+		const repoPath = args?.repoPath ?? gitUri?.repoPath;
+
 		return executeGitCommand({
 			command: 'log',
 			state:
-				gitUri?.repoPath != null
+				repoPath != null
 					? {
-							repo: gitUri.repoPath,
+							repo: repoPath,
 							reference:
 								args?.branch != null
 									? args.branch === 'HEAD'
 										? 'HEAD'
-										: GitReference.create(args.branch, gitUri.repoPath, {
+										: GitReference.create(args.branch, repoPath, {
 												refType: 'branch',
 												name: args.branch,
 												remote: false,

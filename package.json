@@ -45,6 +45,7 @@
 		"annotation",
 		"multi-root ready"
 	],
+	"enableProposedApi": true,
 	"activationEvents": [
 		"*"
 	],

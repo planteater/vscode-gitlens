@@ -16,6 +16,7 @@ import { Logger } from '../logger';
 import { Messages } from '../messages';
 
 export interface ShowQuickCommitCommandArgs {
+	repoPath?: string;
 	sha?: string;
 	commit?: GitCommit | GitLogCommit;
 	repoLog?: GitLog;
@@ -54,12 +55,31 @@ export class ShowQuickCommitCommand extends ActiveEditorCachedCommand {
 	}
 
 	async execute(editor?: TextEditor, uri?: Uri, args?: ShowQuickCommitCommandArgs) {
-		uri = getCommandUri(uri, editor);
-		if (uri == null) return;
+		let gitUri;
+		let repoPath;
+		if (args?.commit == null) {
+			if (args?.repoPath != null && args.sha != null) {
+				repoPath = args.repoPath;
+				gitUri = GitUri.fromRepoPath(repoPath);
+			} else {
+				uri = getCommandUri(uri, editor);
+				if (uri == null) return;
 
-		const gitUri = await GitUri.fromUri(uri);
+				gitUri = await GitUri.fromUri(uri);
+				repoPath = gitUri.repoPath;
+			}
+		} else {
+			if (args.sha == null) {
+				args.sha = args.commit.sha;
+			}
 
-		let repoPath = gitUri.repoPath;
+			gitUri = args.commit.toGitUri();
+			repoPath = args.commit.repoPath;
+
+			if (uri == null) {
+				uri = args.commit.uri;
+			}
+		}
 
 		args = { ...args };
 		if (args.sha == null) {
