@@ -5,13 +5,14 @@ import {
 	InviteToLiveShareCommand,
 	OpenCommitInRemoteCommand,
 	OpenFileRevisionCommand,
-	ShowQuickCommitDetailsCommand,
-	ShowQuickCommitFileDetailsCommand,
+	ShowQuickCommitCommand,
+	ShowQuickCommitFileCommand,
 } from '../../commands';
 import { DateStyle, FileAnnotationType } from '../../configuration';
 import { GlyphChars } from '../../constants';
 import { Container } from '../../container';
-import { GitCommit, GitLogCommit, GitRemote, GitService, GitUri, IssueOrPullRequest, PullRequest } from '../gitService';
+import { GitCommit, GitLogCommit, GitRemote, GitRevision, IssueOrPullRequest, PullRequest } from '../git';
+import { GitUri } from '../gitUri';
 import { Promises, Strings } from '../../system';
 import { FormatOptions, Formatter } from './formatter';
 import { ContactPresence } from '../../vsls/vsls';
@@ -203,10 +204,10 @@ export class CommitFormatter extends Formatter<GitCommit, CommitFormatOptions> {
 			const { previousLineDiffUris: diffUris } = this._options;
 			if (diffUris !== undefined && diffUris.previous !== undefined) {
 				commands = `\`${this._padOrTruncate(
-					GitService.shortenSha(
-						GitService.isUncommittedStaged(diffUris.current.sha)
+					GitRevision.shorten(
+						GitRevision.isUncommittedStaged(diffUris.current.sha)
 							? diffUris.current.sha
-							: GitService.uncommittedSha,
+							: GitRevision.uncommitted,
 					)!,
 					this._options.tokenOptions.id,
 				)}\``;
@@ -225,8 +226,8 @@ export class CommitFormatter extends Formatter<GitCommit, CommitFormatOptions> {
 				})} "Open Changes")** `;
 			} else {
 				commands = `\`${this._padOrTruncate(
-					GitService.shortenSha(
-						this._item.isUncommittedStaged ? GitService.uncommittedStagedSha : GitService.uncommittedSha,
+					GitRevision.shorten(
+						this._item.isUncommittedStaged ? GitRevision.uncommittedStaged : GitRevision.uncommitted,
 					)!,
 					this._options.tokenOptions.id,
 				)}\``;
@@ -237,7 +238,7 @@ export class CommitFormatter extends Formatter<GitCommit, CommitFormatOptions> {
 
 		const separator = ' &nbsp;&nbsp;|&nbsp;&nbsp; ';
 
-		commands = `---\n\n[$(git-commit) ${this.id}](${ShowQuickCommitDetailsCommand.getMarkdownCommandArgs(
+		commands = `---\n\n[$(git-commit) ${this.id}](${ShowQuickCommitCommand.getMarkdownCommandArgs(
 			this._item.sha,
 		)} "Show Commit Details")${separator}`;
 
@@ -296,7 +297,7 @@ export class CommitFormatter extends Formatter<GitCommit, CommitFormatOptions> {
 			}
 		}
 
-		commands += `[$(ellipsis)](${ShowQuickCommitFileDetailsCommand.getMarkdownCommandArgs({
+		commands += `[$(ellipsis)](${ShowQuickCommitFileCommand.getMarkdownCommandArgs({
 			revisionUri: GitUri.toRevisionUri(this._item.toGitUri()).toString(true),
 		})} "Show More Actions")`;
 

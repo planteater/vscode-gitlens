@@ -1,7 +1,7 @@
 'use strict';
 import { env, TextEditor, Uri, window } from 'vscode';
 import { Container } from '../container';
-import { GitUri } from '../git/gitService';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { Messages } from '../messages';
 import { Iterables } from '../system';

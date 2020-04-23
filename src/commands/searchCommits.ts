@@ -4,7 +4,7 @@ import { SearchResultsCommitsNode } from '../views/nodes';
 import { Container } from '../container';
 import { Command, command, CommandContext, Commands, isCommandViewContextWithRepo } from './common';
 import { GitCommandsCommandArgs } from '../commands';
-import { SearchPattern } from '../git/gitService';
+import { SearchPattern } from '../git/git';
 
 export interface SearchCommitsCommandArgs {
 	search?: Partial<SearchPattern>;

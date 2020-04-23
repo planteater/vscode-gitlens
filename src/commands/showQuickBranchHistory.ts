@@ -2,7 +2,8 @@
 import { commands, TextEditor, Uri, window } from 'vscode';
 import { GlyphChars } from '../constants';
 import { Container } from '../container';
-import { GitLog, GitUri } from '../git/gitService';
+import { GitLog } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { Messages } from '../messages';
 import {
@@ -12,7 +13,7 @@ import {
 	ReferencesQuickPickIncludes,
 } from '../quickpicks';
 import { ActiveEditorCachedCommand, command, Commands, getCommandUri, getRepoPathOrActiveOrPrompt } from './common';
-import { ShowQuickCommitDetailsCommandArgs } from './showQuickCommitDetails';
+import { ShowQuickCommitCommandArgs } from './showQuickCommit';
 
 export interface ShowQuickBranchHistoryCommandArgs {
 	branch?: string;
@@ -113,13 +114,13 @@ export class ShowQuickBranchHistoryCommand extends ActiveEditorCachedCommand {
 				[uri, { ...args }],
 			);
 
-			const commandArgs: ShowQuickCommitDetailsCommandArgs = {
+			const commandArgs: ShowQuickCommitCommandArgs = {
 				sha: pick.item.sha,
 				commit: pick.item,
 				repoLog: args.log,
 				goBackCommand: currentCommand,
 			};
-			return commands.executeCommand(Commands.ShowQuickCommitDetails, pick.item.toGitUri(), commandArgs);
+			return commands.executeCommand(Commands.ShowQuickCommit, pick.item.toGitUri(), commandArgs);
 		} catch (ex) {
 			Logger.error(ex, 'ShowQuickBranchHistoryCommand');
 			return Messages.showGenericErrorMessage('Unable to show branch history');

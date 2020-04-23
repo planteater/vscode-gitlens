@@ -1,14 +1,12 @@
 'use strict';
-import { commands } from 'vscode';
-import { Container } from '../container';
-import { GitStashCommit } from '../git/gitService';
+import { GitActions } from '../commands';
+import { GitStashCommit, GitStashReference } from '../git/git';
 import { CommandQuickPickItem } from '../quickpicks';
 import { command, Command, CommandContext, Commands, isCommandViewContextWithCommit } from './common';
-import { GitCommandsCommandArgs } from '../commands';
 
 export interface StashDeleteCommandArgs {
 	repoPath?: string;
-	stashItem?: { stashName: string; message: string; ref: string; repoPath: string };
+	stashItem?: GitStashReference;
 
 	goBackCommand?: CommandQuickPickItem;
 }
@@ -29,21 +27,6 @@ export class StashDeleteCommand extends Command {
 	}
 
 	async execute(args?: StashDeleteCommandArgs) {
-		args = { ...args };
-
-		let repo;
-		if (args.stashItem !== undefined || args.repoPath !== undefined) {
-			repo = await Container.git.getRepository((args.stashItem && args.stashItem.repoPath) || args.repoPath!);
-		}
-
-		const gitCommandArgs: GitCommandsCommandArgs = {
-			command: 'stash',
-			state: {
-				subcommand: 'drop',
-				repo: repo,
-				stash: args.stashItem,
-			},
-		};
-		return commands.executeCommand(Commands.GitCommands, gitCommandArgs);
+		return GitActions.Stash.drop(args?.repoPath ?? args?.stashItem?.repoPath, args?.stashItem);
 	}
 }

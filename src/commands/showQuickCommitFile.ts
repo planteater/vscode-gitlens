@@ -1,11 +1,11 @@
 'use strict';
-import { TextEditor, Uri, window } from 'vscode';
-import { GlyphChars } from '../constants';
+import { commands, TextEditor, Uri, window } from 'vscode';
 import { Container } from '../container';
-import { GitCommit, GitLog, GitLogCommit, GitService, GitUri } from '../git/gitService';
+import { GitBlameCommit, GitCommit, GitLog, GitLogCommit } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { Messages } from '../messages';
-import { CommandQuickPickItem, CommitFileQuickPick } from '../quickpicks';
+import { CommandQuickPickItem } from '../quickpicks';
 import {
 	ActiveEditorCachedCommand,
 	command,
@@ -14,9 +14,9 @@ import {
 	getCommandUri,
 	isCommandViewContextWithCommit,
 } from './common';
-import { ShowQuickCommitDetailsCommandArgs } from './showQuickCommitDetails';
+import { GitCommandsCommandArgs } from '../commands';
 
-export interface ShowQuickCommitFileDetailsCommandArgs {
+export interface ShowQuickCommitFileCommandArgs {
 	sha?: string;
 	commit?: GitCommit | GitLogCommit;
 	fileLog?: GitLog;
@@ -26,20 +26,17 @@ export interface ShowQuickCommitFileDetailsCommandArgs {
 }
 
 @command()
-export class ShowQuickCommitFileDetailsCommand extends ActiveEditorCachedCommand {
-	static getMarkdownCommandArgs(args: ShowQuickCommitFileDetailsCommandArgs): string {
-		return super.getMarkdownCommandArgsCore<ShowQuickCommitFileDetailsCommandArgs>(
-			Commands.ShowQuickCommitFileDetails,
-			args,
-		);
+export class ShowQuickCommitFileCommand extends ActiveEditorCachedCommand {
+	static getMarkdownCommandArgs(args: ShowQuickCommitFileCommandArgs): string {
+		return super.getMarkdownCommandArgsCore<ShowQuickCommitFileCommandArgs>(Commands.ShowQuickCommitFile, args);
 	}
 
 	constructor() {
-		super([Commands.ShowQuickCommitFileDetails, Commands.ShowQuickRevisionDetails]);
+		super([Commands.ShowQuickCommitFile, Commands.ShowQuickCommitRevision]);
 	}
 
-	protected async preExecute(context: CommandContext, args?: ShowQuickCommitFileDetailsCommandArgs) {
-		if (context.command === Commands.ShowQuickRevisionDetails && context.editor !== undefined) {
+	protected async preExecute(context: CommandContext, args?: ShowQuickCommitFileCommandArgs) {
+		if (context.command === Commands.ShowQuickCommitRevision && context.editor !== undefined) {
 			args = { ...args };
 
 			const gitUri = await GitUri.fromUri(context.editor.document.uri);
@@ -58,7 +55,7 @@ export class ShowQuickCommitFileDetailsCommand extends ActiveEditorCachedCommand
 		return this.execute(context.editor, context.uri, args);
 	}
 
-	async execute(editor?: TextEditor, uri?: Uri, args?: ShowQuickCommitFileDetailsCommandArgs) {
+	async execute(editor?: TextEditor, uri?: Uri, args?: ShowQuickCommitFileCommandArgs) {
 		uri = getCommandUri(uri, editor);
 		if (uri == null) return undefined;
 
@@ -123,49 +120,62 @@ export class ShowQuickCommitFileDetailsCommand extends ActiveEditorCachedCommand
 				return Messages.showCommitNotFoundWarningMessage('Unable to show commit file details');
 			}
 
-			const shortSha = GitService.shortenSha(args.sha);
+			// const shortSha = GitRevision.shorten(args.sha);
 
-			if (args.goBackCommand === undefined) {
-				const commandArgs: ShowQuickCommitDetailsCommandArgs = {
-					commit: args.commit,
-					sha: args.sha,
-				};
-
-				// Create a command to get back to the commit details
-				args.goBackCommand = new CommandQuickPickItem(
-					{
-						label: `go back ${GlyphChars.ArrowBack}`,
-						description: `to details of ${GlyphChars.Space}$(git-commit) ${shortSha}`,
-					},
-					Commands.ShowQuickCommitDetails,
-					[args.commit.toGitUri(), commandArgs],
-				);
+			const fileName = args.commit.fileName;
+			if (args.commit instanceof GitBlameCommit) {
+				args.commit = (await Container.git.getCommit(args.commit.repoPath, args.commit.ref))!;
 			}
 
-			// Create a command to get back to where we are right now
-			const currentCommand = new CommandQuickPickItem(
-				{
-					label: `go back ${GlyphChars.ArrowBack}`,
-					description: `to details of ${args.commit.getFormattedPath()} from ${
-						GlyphChars.Space
-					}$(git-commit) ${shortSha}`,
+			const commandArgs: GitCommandsCommandArgs = {
+				command: 'show',
+				state: {
+					repo: args.commit.repoPath,
+					reference: args.commit as GitLogCommit,
+					file: fileName,
 				},
-				Commands.ShowQuickCommitFileDetails,
-				[args.commit.toGitUri(), args],
-			);
+			};
+			return commands.executeCommand(Commands.GitCommands, commandArgs);
 
-			const pick = await CommitFileQuickPick.show(
-				args.commit as GitLogCommit,
-				uri,
-				args.goBackCommand,
-				currentCommand,
-				args.fileLog,
-			);
-			if (pick === undefined) return undefined;
+			// if (args.goBackCommand === undefined) {
+			// 	const commandArgs: ShowQuickCommitCommandArgs = {
+			// 		commit: args.commit,
+			// 		sha: args.sha,
+			// 	};
 
-			if (pick instanceof CommandQuickPickItem) return pick.execute();
+			// 	// Create a command to get back to the commit details
+			// 	args.goBackCommand = new CommandQuickPickItem(
+			// 		{
+			// 			label: `go back ${GlyphChars.ArrowBack}`,
+			// 			description: `to details of ${GlyphChars.Space}$(git-commit) ${shortSha}`,
+			// 		},
+			// 		Commands.ShowQuickCommit,
+			// 		[args.commit.toGitUri(), commandArgs],
+			// 	);
+			// }
 
-			return undefined;
+			// // Create a command to get back to where we are right now
+			// const currentCommand = new CommandQuickPickItem(
+			// 	{
+			// 		label: `go back ${GlyphChars.ArrowBack}`,
+			// 		description: `to details of ${args.commit.getFormattedPath()} from ${
+			// 			GlyphChars.Space
+			// 		}$(git-commit) ${shortSha}`,
+			// 	},
+			// 	Commands.ShowQuickCommitFile,
+			// 	[args.commit.toGitUri(), args],
+			// );
+
+			// const pick = await CommitFileQuickPick.show(args.commit as GitLogCommit, uri, {
+			// 	goBackCommand: args.goBackCommand,
+			// 	currentCommand: currentCommand,
+			// 	fileLog: args.fileLog,
+			// });
+			// if (pick === undefined) return undefined;
+
+			// if (pick instanceof CommandQuickPickItem) return pick.execute();
+
+			// return undefined;
 		} catch (ex) {
 			Logger.error(ex, 'ShowQuickCommitFileDetailsCommand');
 			return Messages.showGenericErrorMessage('Unable to show commit file details');

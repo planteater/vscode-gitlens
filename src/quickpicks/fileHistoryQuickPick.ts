@@ -3,17 +3,18 @@ import { CancellationTokenSource, window } from 'vscode';
 import { Commands, ShowQuickCurrentBranchHistoryCommandArgs, ShowQuickFileHistoryCommandArgs } from '../commands';
 import { GlyphChars } from '../constants';
 import { Container } from '../container';
-import { GitLog, GitUri, RemoteResource, RemoteResourceType } from '../git/gitService';
+import { GitLog, RemoteResource, RemoteResourceType } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { KeyNoopCommand } from '../keyboard';
-import { Iterables } from '../system';
 import {
 	CommandQuickPickItem,
+	CommitQuickPickItem,
+	CopyOrOpenRemotesCommandQuickPickItem,
 	getQuickPickIgnoreFocusOut,
 	ShowFileHistoryFromQuickPickItem,
 	showQuickPickProgress,
-} from './commonQuickPicks';
-import { OpenRemotesCommandQuickPickItem } from './remotesQuickPick';
-import { CommitQuickPickItem } from './gitQuickPicks';
+} from '../quickpicks';
+import { Iterables } from '../system';
 
 export class FileHistoryQuickPick {
 	static showProgress(placeHolder: string) {
@@ -165,7 +166,11 @@ export class FileHistoryQuickPick {
 									branch: branch.name,
 									fileName: uri.relativePath,
 							  };
-					items.splice(index++, 0, new OpenRemotesCommandQuickPickItem(remotes, resource, currentCommand));
+					items.splice(
+						index++,
+						0,
+						new CopyOrOpenRemotesCommandQuickPickItem(remotes, resource, false, currentCommand),
+					);
 				}
 			}
 

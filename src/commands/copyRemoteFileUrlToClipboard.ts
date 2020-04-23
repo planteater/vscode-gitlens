@@ -1,7 +1,7 @@
 'use strict';
 import { commands, TextEditor, Uri } from 'vscode';
 import { Container } from '../container';
-import { GitUri } from '../git/gitService';
+import { GitUri } from '../git/gitUri';
 import { StatusFileNode } from '../views/nodes';
 import {
 	ActiveEditorCommand,

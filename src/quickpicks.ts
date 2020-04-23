@@ -1,12 +1,17 @@
 'use strict';
 
-export * from './quickpicks/commonQuickPicks';
-export * from './quickpicks/gitQuickPicks';
+import { configuration } from './configuration';
+
+export function getQuickPickIgnoreFocusOut() {
+	return !configuration.get('advanced', 'quickPick', 'closeOnFocusOut');
+}
+
+export * from './quickpicks/quickPicksItems';
+export * from './quickpicks/gitQuickPickItems';
 
 export * from './quickpicks/branchHistoryQuickPick';
-export * from './quickpicks/commitFileQuickPick';
-export * from './quickpicks/commitQuickPick';
-export * from './quickpicks/commitsQuickPick';
+// export * from './quickpicks/commitFileQuickPick';
+export * from './quickpicks/commitQuickPickItems';
 export * from './quickpicks/fileHistoryQuickPick';
 export * from './quickpicks/modesQuickPick';
 export * from './quickpicks/referencesQuickPick';

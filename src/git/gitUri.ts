@@ -5,7 +5,7 @@ import { Uri } from 'vscode';
 import { UriComparer } from '../comparers';
 import { DocumentSchemes, GlyphChars } from '../constants';
 import { Container } from '../container';
-import { GitCommit, GitFile, GitService } from '../git/gitService';
+import { GitCommit, GitFile, GitRevision } from '../git/git';
 import { Logger } from '../logger';
 import { debug, memoize, Strings } from '../system';
 
@@ -72,7 +72,7 @@ export class GitUri extends ((Uri as any) as UriEx) {
 			});
 
 			this.repoPath = data.repoPath;
-			if (GitService.isUncommittedStaged(data.ref) || !GitService.isUncommitted(data.ref)) {
+			if (GitRevision.isUncommittedStaged(data.ref) || !GitRevision.isUncommitted(data.ref)) {
 				this.sha = data.ref;
 			}
 
@@ -125,7 +125,7 @@ export class GitUri extends ((Uri as any) as UriEx) {
 		});
 		this.repoPath = commitOrRepoPath.repoPath;
 		this.versionedPath = commitOrRepoPath.versionedPath;
-		if (GitService.isUncommittedStaged(commitOrRepoPath.sha) || !GitService.isUncommitted(commitOrRepoPath.sha)) {
+		if (GitRevision.isUncommittedStaged(commitOrRepoPath.sha) || !GitRevision.isUncommitted(commitOrRepoPath.sha)) {
 			this.sha = commitOrRepoPath.sha;
 		}
 	}
@@ -142,12 +142,12 @@ export class GitUri extends ((Uri as any) as UriEx) {
 
 	@memoize()
 	get isUncommitted() {
-		return GitService.isUncommitted(this.sha);
+		return GitRevision.isUncommitted(this.sha);
 	}
 
 	@memoize()
 	get isUncommittedStaged() {
-		return GitService.isUncommittedStaged(this.sha);
+		return GitRevision.isUncommittedStaged(this.sha);
 	}
 
 	@memoize()
@@ -164,7 +164,7 @@ export class GitUri extends ((Uri as any) as UriEx) {
 
 	@memoize()
 	get shortSha() {
-		return GitService.shortenSha(this.sha);
+		return GitRevision.shorten(this.sha);
 	}
 
 	@memoize<GitUri['documentUri']>(options => `${options?.useVersionedPath ? 'versioned' : ''}`)
@@ -277,7 +277,7 @@ export class GitUri extends ((Uri as any) as UriEx) {
 				switch (data.ref) {
 					case emptyStr:
 					case '~':
-						ref = GitService.uncommittedStagedSha;
+						ref = GitRevision.uncommittedStaged;
 						break;
 
 					case null:
@@ -425,7 +425,7 @@ export class GitUri extends ((Uri as any) as UriEx) {
 			}
 
 			ref = uriOrRef;
-			shortSha = GitService.shortenSha(ref);
+			shortSha = GitRevision.shorten(ref);
 		} else {
 			fileName = uriOrRef.fsPath;
 
@@ -438,8 +438,8 @@ export class GitUri extends ((Uri as any) as UriEx) {
 			return Uri.file(fileName);
 		}
 
-		if (GitService.isUncommitted(ref)) {
-			return GitService.isUncommittedStaged(ref) ? GitUri.git(fileName, repoPath) : Uri.file(fileName);
+		if (GitRevision.isUncommitted(ref)) {
+			return GitRevision.isUncommittedStaged(ref) ? GitUri.git(fileName, repoPath) : Uri.file(fileName);
 		}
 
 		const filePath = Strings.normalizePath(fileName, { addLeadingSlash: true });

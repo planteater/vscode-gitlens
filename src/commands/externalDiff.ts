@@ -2,7 +2,8 @@
 import { env, SourceControlResourceState, Uri, window } from 'vscode';
 import { GlyphChars } from '../constants';
 import { Container } from '../container';
-import { GitService, GitUri } from '../git/gitService';
+import { GitRevision } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { Messages } from '../messages';
 import { Arrays } from '../system';
@@ -69,7 +70,7 @@ export class ExternalDiffCommand extends Command {
 		args = { ...args };
 
 		if (isCommandViewContextWithFileCommit(context)) {
-			const ref1 = GitService.isUncommitted(context.node.commit.previousFileSha)
+			const ref1 = GitRevision.isUncommitted(context.node.commit.previousFileSha)
 				? ''
 				: context.node.commit.previousFileSha;
 			const ref2 = context.node.commit.isUncommitted ? '' : context.node.commit.sha;

@@ -51,7 +51,6 @@ import {
 	GitBlameParser,
 	GitBranch,
 	GitBranchParser,
-	GitCommit,
 	GitCommitType,
 	GitContributor,
 	GitDiff,
@@ -67,6 +66,7 @@ import {
 	GitReflog,
 	GitRemote,
 	GitRemoteParser,
+	GitRevision,
 	GitStash,
 	GitStashParser,
 	GitStatus,
@@ -76,21 +76,17 @@ import {
 	GitTagParser,
 	GitTree,
 	GitTreeParser,
+	PullRequest,
+	PullRequestDateFormatting,
 	Repository,
 	RepositoryChange,
 	RepositoryChangeEvent,
+	SearchPattern,
 } from './git';
 import { GitUri } from './gitUri';
 import { RemoteProvider, RemoteProviderFactory, RemoteProviders, RemoteProviderWithApi } from './remotes/factory';
 import { GitReflogParser, GitShortLogParser } from './parsers/parsers';
 import { fsExists, isWindows } from './shell';
-import { GitRevision, PullRequest, PullRequestDateFormatting } from './models/models';
-
-export * from './gitUri';
-export * from './models/models';
-export * from './formatters/formatters';
-export * from './remotes/provider';
-export { RemoteProviderFactory } from './remotes/factory';
 
 const emptyStr = '';
 const slash = '/';
@@ -103,80 +99,9 @@ const doubleQuoteRegex = /"/g;
 const driveLetterRegex = /(?<=^\/?)([a-zA-Z])(?=:\/)/;
 const userConfigRegex = /^user\.(name|email) (.*)$/gm;
 const mappedAuthorRegex = /(.+)\s<(.+)>/;
-const searchMessageOperationRegex = /(?=(.*?)\s?(?:(?:=:|message:|@:|author:|#:|commit:|\?:|file:|~:|change:)|$))/;
-const searchMessageValuesRegex = /(".+"|[^\b\s]+)/g;
-const searchOperationRegex = /((?:=|message|@|author|#|commit|\?|file|~|change):)\s?(?=(.*?)\s?(?:(?:=:|message:|@:|author:|#:|commit:|\?:|file:|~:|change:)|$))/g;
 
 const emptyPromise: Promise<GitBlame | GitDiff | GitLog | undefined> = Promise.resolve(undefined);
 const reflogCommands = ['merge', 'pull'];
-
-export type SearchOperators =
-	| ''
-	| '=:'
-	| 'message:'
-	| '@:'
-	| 'author:'
-	| '#:'
-	| 'commit:'
-	| '?:'
-	| 'file:'
-	| '~:'
-	| 'change:';
-
-export const searchOperators = new Set<string>([
-	'',
-	'=:',
-	'message:',
-	'@:',
-	'author:',
-	'#:',
-	'commit:',
-	'?:',
-	'file:',
-	'~:',
-	'change:',
-]);
-
-export interface SearchPattern {
-	pattern: string;
-	matchAll?: boolean;
-	matchCase?: boolean;
-	matchRegex?: boolean;
-}
-
-export namespace SearchPattern {
-	export function fromCommit(ref: string): string;
-	export function fromCommit(commit: GitCommit): string;
-	export function fromCommit(refOrCommit: string | GitCommit) {
-		return `#:${GitService.shortenSha(typeof refOrCommit === 'string' ? refOrCommit : refOrCommit.sha)}`;
-	}
-
-	export function fromCommits(refs: string[]): string;
-	export function fromCommits(commits: GitCommit[]): string;
-	export function fromCommits(refsOrCommits: (string | GitCommit)[]) {
-		return refsOrCommits.map(r => `#:${GitService.shortenSha(typeof r === 'string' ? r : r.sha)}`).join(' ');
-	}
-
-	export function toKey(search: SearchPattern) {
-		return `${search.pattern}|${search.matchAll ? 'A' : ''}${search.matchCase ? 'C' : ''}${
-			search.matchRegex ? 'R' : ''
-		}`;
-	}
-}
-
-const normalizeSearchOperatorsMap = new Map<SearchOperators, SearchOperators>([
-	['', 'message:'],
-	['=:', 'message:'],
-	['message:', 'message:'],
-	['@:', 'author:'],
-	['author:', 'author:'],
-	['#:', 'commit:'],
-	['commit:', 'commit:'],
-	['?:', 'file:'],
-	['file:', 'file:'],
-	['~:', 'change:'],
-	['change:', 'change:'],
-]);
 
 export class GitService implements Disposable {
 	private _onDidChangeRepositories = new EventEmitter<void>();
@@ -1128,13 +1053,8 @@ export class GitService implements Disposable {
 	): Promise<GitBranch[]> {
 		if (repoPath === undefined) return [];
 
-		let branches: GitBranch[] | undefined;
-		try {
-			if (this.useCaching) {
-				branches = this._branchesCache.get(repoPath);
-				if (branches !== undefined) return branches;
-			}
-
+		let branches = this.useCaching ? this._branchesCache.get(repoPath) : undefined;
+		if (branches === undefined) {
 			const data = await Git.for_each_ref__branch(repoPath, { all: true });
 			// If we don't get any data, assume the repo doesn't have any commits yet so check if we have a current branch
 			if (data == null || data.length === 0) {
@@ -1146,26 +1066,21 @@ export class GitService implements Disposable {
 
 			if (this.useCaching) {
 				const repo = await this.getRepository(repoPath);
-				if (repo !== undefined && repo.supportsChangeEvents) {
+				if (repo?.supportsChangeEvents) {
 					this._branchesCache.set(repoPath, branches);
 				}
 			}
-
-			return branches;
-		} finally {
-			if (options.filter !== undefined) {
-				branches = branches!.filter(options.filter);
-			}
-
-			if (options.sort) {
-				GitBranch.sort(branches!);
-			}
-
-			if (options.filter !== undefined) {
-				// eslint-disable-next-line no-unsafe-finally
-				return branches!;
-			}
 		}
+
+		if (options.filter !== undefined) {
+			branches = branches.filter(options.filter);
+		}
+
+		if (options.sort) {
+			GitBranch.sort(branches);
+		}
+
+		return branches;
 	}
 
 	@log()
@@ -1202,11 +1117,7 @@ export class GitService implements Disposable {
 			return [...branches.filter(b => !b.remote), ...tags, ...branches.filter(b => b.remote)];
 		}
 
-		if (branches !== undefined) {
-			return branches;
-		}
-
-		return tags;
+		return branches ?? tags;
 	}
 
 	@log()
@@ -1272,7 +1183,7 @@ export class GitService implements Disposable {
 		const commit = options.ref ? log.commits.get(options.ref) : undefined;
 		if (commit === undefined && !options.firstIfNotFound && options.ref) {
 			// If the ref isn't a valid sha we will never find it, so let it fall through so we return the first
-			if (Git.isSha(options.ref) || Git.isUncommitted(options.ref)) return undefined;
+			if (GitRevision.isSha(options.ref) || GitRevision.isUncommitted(options.ref)) return undefined;
 		}
 
 		return commit ?? Iterables.first(log.commits.values());
@@ -1422,7 +1333,7 @@ export class GitService implements Disposable {
 
 		try {
 			let data;
-			if (ref1 !== undefined && ref2 === undefined && !Git.isUncommittedStaged(ref1)) {
+			if (ref1 !== undefined && ref2 === undefined && !GitRevision.isUncommittedStaged(ref1)) {
 				data = await Git.show__diff(root, file, ref1, originalFileName, {
 					similarityThreshold: Container.config.advanced.similarityThreshold,
 				});
@@ -1498,7 +1409,7 @@ export class GitService implements Disposable {
 
 	@log()
 	async getFileStatusForCommit(repoPath: string, fileName: string, ref: string): Promise<GitFile | undefined> {
-		if (ref === GitService.deletedOrMissingSha || Git.isUncommitted(ref)) return undefined;
+		if (ref === GitRevision.deletedOrMissing || GitRevision.isUncommitted(ref)) return undefined;
 
 		const data = await Git.show__name_status(repoPath, fileName, ref);
 		if (!data) return undefined;
@@ -1630,7 +1541,7 @@ export class GitService implements Disposable {
 			const limit = options.limit ?? Container.config.advanced.maxSearchItems ?? 0;
 			const similarityThreshold = Container.config.advanced.similarityThreshold;
 
-			const operations = GitService.parseSearchOperations(search.pattern);
+			const operations = SearchPattern.parseSearchOperations(search.pattern);
 
 			const searchArgs = new Set<string>();
 			const files: string[] = [];
@@ -2099,7 +2010,7 @@ export class GitService implements Disposable {
 
 		const fileName = GitUri.relativeTo(uri, repoPath);
 
-		if (Git.isUncommittedStaged(ref)) {
+		if (GitRevision.isUncommittedStaged(ref)) {
 			return {
 				current: GitUri.fromFile(fileName, repoPath, ref),
 				next: GitUri.fromFile(fileName, repoPath, undefined),
@@ -2114,7 +2025,7 @@ export class GitService implements Disposable {
 				if (status.indexStatus !== undefined) {
 					return {
 						current: GitUri.fromFile(fileName, repoPath, ref),
-						next: GitUri.fromFile(fileName, repoPath, GitService.uncommittedStagedSha),
+						next: GitUri.fromFile(fileName, repoPath, GitRevision.uncommittedStaged),
 					};
 				}
 			}
@@ -2143,10 +2054,10 @@ export class GitService implements Disposable {
 		// editorLine?: number
 	): Promise<GitUri | undefined> {
 		// If we have no ref (or staged ref) there is no next commit
-		if (ref === undefined || ref.length === 0 || Git.isUncommittedStaged(ref)) return undefined;
+		if (ref === undefined || ref.length === 0 || GitRevision.isUncommittedStaged(ref)) return undefined;
 
 		let filters: GitDiffFilter[] | undefined;
-		if (ref === GitService.deletedOrMissingSha) {
+		if (ref === GitRevision.deletedOrMissing) {
 			// If we are trying to move next from a deleted or missing ref then get the first commit
 			ref = undefined;
 			filters = ['A'];
@@ -2179,7 +2090,7 @@ export class GitService implements Disposable {
 			return GitUri.fromFile(
 				renamedFile || file || fileName,
 				repoPath,
-				nextRenamedRef || nextRef || GitService.deletedOrMissingSha,
+				nextRenamedRef || nextRef || GitRevision.deletedOrMissing,
 			);
 		}
 
@@ -2194,7 +2105,7 @@ export class GitService implements Disposable {
 		skip: number = 0,
 		firstParent: boolean = false,
 	): Promise<{ current: GitUri; previous: GitUri | undefined } | undefined> {
-		if (ref === GitService.deletedOrMissingSha) return undefined;
+		if (ref === GitRevision.deletedOrMissing) return undefined;
 
 		const fileName = GitUri.relativeTo(uri, repoPath);
 
@@ -2215,13 +2126,13 @@ export class GitService implements Disposable {
 						// Diff working with staged
 						return {
 							current: GitUri.fromFile(fileName, repoPath, undefined),
-							previous: GitUri.fromFile(fileName, repoPath, GitService.uncommittedStagedSha),
+							previous: GitUri.fromFile(fileName, repoPath, GitRevision.uncommittedStaged),
 						};
 					}
 
 					return {
 						// Diff staged with HEAD (or prior if more skips)
-						current: GitUri.fromFile(fileName, repoPath, GitService.uncommittedStagedSha),
+						current: GitUri.fromFile(fileName, repoPath, GitRevision.uncommittedStaged),
 						previous: await this.getPreviousUri(repoPath, uri, ref, skip - 1, undefined, firstParent),
 					};
 				} else if (status.workingTreeStatus !== undefined) {
@@ -2237,12 +2148,12 @@ export class GitService implements Disposable {
 			}
 		}
 		// If we are at the index (staged), diff staged with HEAD
-		else if (GitService.isUncommittedStaged(ref)) {
+		else if (GitRevision.isUncommittedStaged(ref)) {
 			const current =
 				skip === 0
 					? GitUri.fromFile(fileName, repoPath, ref)
 					: (await this.getPreviousUri(repoPath, uri, undefined, skip - 1, undefined, firstParent))!;
-			if (current === undefined || current.sha === GitService.deletedOrMissingSha) return undefined;
+			if (current === undefined || current.sha === GitRevision.deletedOrMissing) return undefined;
 
 			return {
 				current: current,
@@ -2255,7 +2166,7 @@ export class GitService implements Disposable {
 			skip === 0
 				? GitUri.fromFile(fileName, repoPath, ref)
 				: (await this.getPreviousUri(repoPath, uri, ref, skip - 1, undefined, firstParent))!;
-		if (current === undefined || current.sha === GitService.deletedOrMissingSha) return undefined;
+		if (current === undefined || current.sha === GitRevision.deletedOrMissing) return undefined;
 
 		return {
 			current: current,
@@ -2271,7 +2182,7 @@ export class GitService implements Disposable {
 		ref: string | undefined,
 		skip: number = 0,
 	): Promise<{ current: GitUri; previous: GitUri | undefined } | undefined> {
-		if (ref === GitService.deletedOrMissingSha) return undefined;
+		if (ref === GitRevision.deletedOrMissing) return undefined;
 
 		let fileName = GitUri.relativeTo(uri, repoPath);
 
@@ -2301,7 +2212,7 @@ export class GitService implements Disposable {
 							// Diff working with staged
 							return {
 								current: GitUri.fromFile(fileName, repoPath, undefined),
-								previous: GitUri.fromFile(fileName, repoPath, GitService.uncommittedStagedSha),
+								previous: GitUri.fromFile(fileName, repoPath, GitRevision.uncommittedStaged),
 							};
 						}
 					}
@@ -2317,15 +2228,10 @@ export class GitService implements Disposable {
 				let hunkLine = await this.getDiffForLine(gitUri, editorLine, undefined);
 				if (hunkLine === undefined) {
 					// Next, check if we have a diff in the index (staged)
-					hunkLine = await this.getDiffForLine(
-						gitUri,
-						editorLine,
-						undefined,
-						GitService.uncommittedStagedSha,
-					);
+					hunkLine = await this.getDiffForLine(gitUri, editorLine, undefined, GitRevision.uncommittedStaged);
 
 					if (hunkLine !== undefined) {
-						ref = GitService.uncommittedStagedSha;
+						ref = GitRevision.uncommittedStaged;
 					} else {
 						skip++;
 					}
@@ -2343,12 +2249,12 @@ export class GitService implements Disposable {
 				}
 			}
 		} else {
-			if (GitService.isUncommittedStaged(ref)) {
+			if (GitRevision.isUncommittedStaged(ref)) {
 				const current =
 					skip === 0
 						? GitUri.fromFile(fileName, repoPath, ref)
 						: (await this.getPreviousUri(repoPath, uri, undefined, skip - 1, editorLine))!;
-				if (current.sha === GitService.deletedOrMissingSha) return undefined;
+				if (current.sha === GitRevision.deletedOrMissing) return undefined;
 
 				return {
 					current: current,
@@ -2375,7 +2281,7 @@ export class GitService implements Disposable {
 			skip === 0
 				? GitUri.fromFile(fileName, repoPath, ref)
 				: (await this.getPreviousUri(repoPath, uri, ref, skip - 1, editorLine))!;
-		if (current.sha === GitService.deletedOrMissingSha) return undefined;
+		if (current.sha === GitRevision.deletedOrMissing) return undefined;
 
 		return {
 			current: current,
@@ -2392,11 +2298,11 @@ export class GitService implements Disposable {
 		editorLine?: number,
 		firstParent: boolean = false,
 	): Promise<GitUri | undefined> {
-		if (ref === GitService.deletedOrMissingSha) return undefined;
+		if (ref === GitRevision.deletedOrMissing) return undefined;
 
 		const cc = Logger.getCorrelationContext();
 
-		if (ref === GitService.uncommittedSha) {
+		if (ref === GitRevision.uncommitted) {
 			ref = undefined;
 		}
 
@@ -2413,18 +2319,18 @@ export class GitService implements Disposable {
 		} catch (ex) {
 			// If the line count is invalid just fallback to the most recent commit
 			if (
-				(ref === undefined || GitService.isUncommittedStaged(ref)) &&
+				(ref === undefined || GitRevision.isUncommittedStaged(ref)) &&
 				GitErrors.invalidLineCount.test(ex.message)
 			) {
 				if (ref === undefined) {
 					const status = await this.getStatusForFile(repoPath, fileName);
 					if (status !== undefined && status.indexStatus !== undefined) {
-						return GitUri.fromFile(fileName, repoPath, GitService.uncommittedStagedSha);
+						return GitUri.fromFile(fileName, repoPath, GitRevision.uncommittedStaged);
 					}
 				}
 
 				ref = await Git.log__file_recent(repoPath, fileName);
-				return GitUri.fromFile(fileName, repoPath, ref || GitService.deletedOrMissingSha);
+				return GitUri.fromFile(fileName, repoPath, ref || GitRevision.deletedOrMissing);
 			}
 
 			Logger.error(ex, cc);
@@ -2436,7 +2342,7 @@ export class GitService implements Disposable {
 		// If the previous ref matches the ref we asked for assume we are at the end of the history
 		if (ref !== undefined && ref === previousRef) return undefined;
 
-		return GitUri.fromFile(file || fileName, repoPath, previousRef || GitService.deletedOrMissingSha);
+		return GitUri.fromFile(file || fileName, repoPath, previousRef || GitRevision.deletedOrMissing);
 	}
 
 	async getPullRequestForCommit(
@@ -2456,7 +2362,7 @@ export class GitService implements Disposable {
 		remoteOrProvider: GitRemote | RemoteProviderWithApi,
 		{ timeout }: { timeout?: number } = {},
 	): Promise<PullRequest | undefined> {
-		if (Git.isUncommitted(ref)) return undefined;
+		if (GitRevision.isUncommitted(ref)) return undefined;
 
 		let provider;
 		if (GitRemote.is(remoteOrProvider)) {
@@ -2873,34 +2779,26 @@ export class GitService implements Disposable {
 	): Promise<GitTag[]> {
 		if (repoPath === undefined) return [];
 
-		let tags: GitTag[] | undefined;
-		try {
-			tags = this._tagsCache.get(repoPath);
-			if (tags !== undefined) return tags;
-
+		let tags = this.useCaching ? this._tagsCache.get(repoPath) : undefined;
+		if (tags === undefined) {
 			const data = await Git.tag(repoPath);
 			tags = GitTagParser.parse(data, repoPath) || [];
 
 			const repo = await this.getRepository(repoPath);
-			if (repo !== undefined && repo.supportsChangeEvents) {
+			if (repo?.supportsChangeEvents) {
 				this._tagsCache.set(repoPath, tags);
 			}
-
-			return tags;
-		} finally {
-			if (options.filter !== undefined) {
-				tags = tags!.filter(options.filter);
-			}
-
-			if (options.sort) {
-				GitTag.sort(tags!);
-			}
-
-			if (options.filter !== undefined) {
-				// eslint-disable-next-line no-unsafe-finally
-				return tags!;
-			}
 		}
+
+		if (options.filter !== undefined) {
+			tags = tags.filter(options.filter);
+		}
+
+		if (options.sort) {
+			GitTag.sort(tags);
+		}
+
+		return tags;
 	}
 
 	@log()
@@ -2931,9 +2829,13 @@ export class GitService implements Disposable {
 		fileName: string,
 		ref: string | undefined,
 	): Promise<Uri | undefined> {
-		if (ref === GitService.deletedOrMissingSha) return undefined;
+		if (ref === GitRevision.deletedOrMissing) return undefined;
 
-		if (ref == null || ref.length === 0 || (Git.isUncommitted(ref) && !Git.isUncommittedStaged(ref))) {
+		if (
+			ref == null ||
+			ref.length === 0 ||
+			(GitRevision.isUncommitted(ref) && !GitRevision.isUncommittedStaged(ref))
+		) {
 			// Make sure the file exists in the repo
 			let data = await Git.ls_files(repoPath!, fileName);
 			if (data !== undefined) return GitUri.file(fileName);
@@ -2945,7 +2847,7 @@ export class GitService implements Disposable {
 			return undefined;
 		}
 
-		if (Git.isUncommittedStaged(ref)) {
+		if (GitRevision.isUncommittedStaged(ref)) {
 			return GitUri.git(fileName, repoPath);
 		}
 
@@ -3019,7 +2921,7 @@ export class GitService implements Disposable {
 		repoPath?: string,
 		options: { ref?: string; skipCacheUpdate?: boolean } = {},
 	): Promise<boolean> {
-		if (options.ref === GitService.deletedOrMissingSha) return false;
+		if (options.ref === GitRevision.deletedOrMissing) return false;
 
 		let ref = options.ref;
 		let cacheKey: string;
@@ -3062,7 +2964,7 @@ export class GitService implements Disposable {
 	}
 
 	private async isTrackedCore(fileName: string, repoPath: string, ref?: string) {
-		if (ref === GitService.deletedOrMissingSha) return false;
+		if (ref === GitRevision.deletedOrMissing) return false;
 
 		try {
 			// Even if we have a ref, check first to see if the file exists (that way the cache will be better reused)
@@ -3130,18 +3032,17 @@ export class GitService implements Disposable {
 
 	@log()
 	async resolveReference(repoPath: string, ref: string, uri?: Uri) {
-		if (ref == null || ref.length === 0 || ref === GitService.deletedOrMissingSha) return ref;
+		if (ref == null || ref.length === 0 || ref === GitRevision.deletedOrMissing) return ref;
 
 		if (uri == null) {
-			if (Git.isSha(ref) || !Git.isShaLike(ref) || ref.endsWith('^3')) return ref;
+			if (GitRevision.isSha(ref) || !GitRevision.isShaLike(ref) || ref.endsWith('^3')) return ref;
 
 			return (await Git.rev_parse(repoPath, ref)) || ref;
 		}
 
 		const fileName = Strings.normalizePath(paths.relative(repoPath, uri.fsPath));
 
-		const match = Git.shaParentRegex.exec(ref);
-		if (match != null) {
+		if (GitRevision.isShaParent(ref)) {
 			const parentRef = await Git.log__file_recent(repoPath, fileName, { ref: ref });
 			if (parentRef !== undefined) return parentRef;
 		}
@@ -3228,11 +3129,11 @@ export class GitService implements Disposable {
 	}
 
 	static compareGitVersion(version: string) {
-		return Versions.compare(Versions.fromString(this.getGitVersion()), Versions.fromString(version));
+		return Versions.compare(Versions.fromString(Git.getGitVersion()), Versions.fromString(version));
 	}
 
 	static ensureGitVersion(version: string, feature: string): void {
-		const gitVersion = this.getGitVersion();
+		const gitVersion = Git.getGitVersion();
 		if (Versions.compare(Versions.fromString(gitVersion), Versions.fromString(version)) === -1) {
 			throw new Error(
 				`${feature} requires a newer version of Git (>= ${version}) than is currently installed (${gitVersion}). Please install a more recent version of Git to use this GitLens feature.`,
@@ -3259,108 +3160,5 @@ export class GitService implements Disposable {
 	static getEncoding(repoPathOrUri: string | Uri, fileName?: string): string {
 		const uri = typeof repoPathOrUri === 'string' ? GitUri.resolveToUri(fileName!, repoPathOrUri) : repoPathOrUri;
 		return Git.getEncoding(configuration.getAny<string>('files.encoding', uri));
-	}
-
-	static deletedOrMissingSha = Git.deletedOrMissingSha;
-	static getGitPath = Git.getGitPath;
-	static getGitVersion = Git.getGitVersion;
-	static isSha = Git.isSha;
-	static isShaLike = Git.isShaLike;
-	static isShaParent = Git.isShaParent;
-	static isUncommitted = Git.isUncommitted;
-	static isUncommittedStaged = Git.isUncommittedStaged;
-	static uncommittedSha = Git.uncommittedSha;
-	static uncommittedStagedSha = Git.uncommittedStagedSha;
-
-	static shortenSha(
-		ref: string | undefined,
-		options: {
-			force?: boolean;
-			strings?: { uncommitted?: string; uncommittedStaged?: string; working?: string };
-		} = {},
-	) {
-		if (ref === GitService.deletedOrMissingSha) return '(deleted)';
-
-		return Git.shortenSha(ref, options);
-	}
-
-	static parseSearchOperations(search: string): Map<string, string[]> {
-		const operations = new Map<string, string[]>();
-
-		let op;
-		let value;
-
-		let match = searchMessageOperationRegex.exec(search);
-		if (match != null && match[1] !== '') {
-			[, value] = match;
-
-			if (GitService.isSha(value)) {
-				let values = operations.get('commit:');
-				if (values === undefined) {
-					values = [value];
-					operations.set('commit:', values);
-				} else {
-					values.push(value);
-				}
-			} else {
-				this.parseSearchMessageOperations(value, operations);
-			}
-		}
-
-		do {
-			match = searchOperationRegex.exec(search);
-			if (match == null) break;
-
-			[, op, value] = match;
-
-			if (op !== undefined) {
-				op = normalizeSearchOperatorsMap.get(op as SearchOperators)!;
-
-				if (op === 'message:') {
-					this.parseSearchMessageOperations(value, operations);
-				} else {
-					let values = operations.get(op);
-					if (values === undefined) {
-						values = [value];
-						operations.set(op, values);
-					} else {
-						values.push(value);
-					}
-				}
-			}
-		} while (true);
-
-		return operations;
-	}
-
-	private static parseSearchMessageOperations(message: string, operations: Map<string, string[]>) {
-		let values = operations.get('message:');
-
-		if (message === emptyStr) {
-			if (values === undefined) {
-				values = [''];
-				operations.set('message:', values);
-			} else {
-				values.push('');
-			}
-
-			return;
-		}
-
-		let match;
-		let value;
-		do {
-			match = searchMessageValuesRegex.exec(message);
-			if (match == null) break;
-
-			[, value] = match;
-
-			if (values === undefined) {
-				values = [value];
-				operations.set('message:', values);
-			} else {
-				values.push(value);
-			}
-		} while (true);
 	}
 }

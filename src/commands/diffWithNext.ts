@@ -1,7 +1,8 @@
 'use strict';
 import { commands, Range, TextDocumentShowOptions, TextEditor, Uri } from 'vscode';
 import { Container } from '../container';
-import { GitLogCommit, GitUri } from '../git/gitService';
+import { GitLogCommit } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { Messages } from '../messages';
 import { ActiveEditorCommand, command, CommandContext, Commands, getCommandUri } from './common';

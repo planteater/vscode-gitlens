@@ -2,10 +2,15 @@
 import { CancellationToken, CancellationTokenSource, QuickPickItem, window } from 'vscode';
 import { GlyphChars } from '../constants';
 import { Container } from '../container';
-import { GitBranch, GitTag } from '../git/gitService';
+import { GitBranch, GitTag } from '../git/git';
+import {
+	BranchQuickPickItem,
+	CommandQuickPickItem,
+	getQuickPickIgnoreFocusOut,
+	RefQuickPickItem,
+	TagQuickPickItem,
+} from '../quickpicks';
 import { Promises } from '../system';
-import { CommandQuickPickItem, getQuickPickIgnoreFocusOut } from './commonQuickPicks';
-import { BranchQuickPickItem, RefQuickPickItem, TagQuickPickItem } from './gitQuickPicks';
 
 export type ReferencesQuickPickItem = BranchQuickPickItem | TagQuickPickItem | RefQuickPickItem;
 
@@ -101,7 +106,7 @@ export class ReferencesQuickPick {
 								this.repoPath === undefined ||
 								(await Container.git.validateReference(this.repoPath, ref))
 							) {
-								resolve(RefQuickPickItem.create(ref));
+								resolve(RefQuickPickItem.create(ref, this.repoPath!));
 							} else {
 								quickpick.title = 'You must enter a valid reference';
 								quickpick.busy = false;
@@ -217,11 +222,19 @@ export class ReferencesQuickPick {
 		}
 
 		if (include & ReferencesQuickPickIncludes.HEAD) {
-			(items as QuickPickItem[]).splice(0, 0, RefQuickPickItem.create('HEAD', undefined, { icon: true }));
+			(items as QuickPickItem[]).splice(
+				0,
+				0,
+				RefQuickPickItem.create('HEAD', this.repoPath!, undefined, { icon: true }),
+			);
 		}
 
 		if (include & ReferencesQuickPickIncludes.WorkingTree) {
-			(items as QuickPickItem[]).splice(0, 0, RefQuickPickItem.create('', undefined, { icon: true }));
+			(items as QuickPickItem[]).splice(
+				0,
+				0,
+				RefQuickPickItem.create('', this.repoPath!, undefined, { icon: true }),
+			);
 		}
 
 		if (goBack !== undefined) {

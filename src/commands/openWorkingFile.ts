@@ -2,7 +2,7 @@
 import { Range, TextDocumentShowOptions, TextEditor, Uri, window } from 'vscode';
 import { FileAnnotationType } from '../configuration';
 import { Container } from '../container';
-import { GitUri } from '../git/gitService';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { Messages } from '../messages';
 import { ActiveEditorCommand, command, Commands, findOrOpenEditor, getCommandUri } from './common';

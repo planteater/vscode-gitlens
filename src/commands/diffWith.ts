@@ -1,12 +1,13 @@
 'use strict';
 import * as paths from 'path';
-import { commands, Range, TextDocumentShowOptions, TextEditor, Uri, ViewColumn } from 'vscode';
+import { commands, Range, TextDocumentShowOptions, Uri, ViewColumn } from 'vscode';
+import { command, Command, Commands } from './common';
 import { BuiltInCommands, GlyphChars } from '../constants';
 import { Container } from '../container';
-import { GitCommit, GitService, GitUri } from '../git/gitService';
+import { GitCommit, GitRevision } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { Messages } from '../messages';
-import { ActiveEditorCommand, command, Commands } from './common';
 
 export interface DiffWithCommandArgsRevision {
 	sha: string;
@@ -24,7 +25,7 @@ export interface DiffWithCommandArgs {
 }
 
 @command()
-export class DiffWithCommand extends ActiveEditorCommand {
+export class DiffWithCommand extends Command {
 	static getMarkdownCommandArgs(args: DiffWithCommandArgs): string;
 	static getMarkdownCommandArgs(commit: GitCommit, line?: number): string;
 	static getMarkdownCommandArgs(argsOrCommit: DiffWithCommandArgs | GitCommit, line?: number): string {
@@ -49,7 +50,7 @@ export class DiffWithCommand extends ActiveEditorCommand {
 				args = {
 					repoPath: commit.repoPath,
 					lhs: {
-						sha: commit.previousSha !== undefined ? commit.previousSha : GitService.deletedOrMissingSha,
+						sha: commit.previousSha !== undefined ? commit.previousSha : GitRevision.deletedOrMissing,
 						uri: commit.previousUri,
 					},
 					rhs: {
@@ -70,7 +71,7 @@ export class DiffWithCommand extends ActiveEditorCommand {
 		super(Commands.DiffWith);
 	}
 
-	async execute(editor?: TextEditor, uri?: Uri, args?: DiffWithCommandArgs): Promise<any> {
+	async execute(args?: DiffWithCommandArgs): Promise<any> {
 		if (args === undefined || args.lhs === undefined || args.rhs === undefined) return undefined;
 
 		args = {
@@ -91,11 +92,11 @@ export class DiffWithCommand extends ActiveEditorCommand {
 				await Container.git.resolveReference(args.repoPath, args.rhs.sha, args.rhs.uri),
 			]);
 
-			if (args.lhs.sha !== GitService.deletedOrMissingSha) {
+			if (args.lhs.sha !== GitRevision.deletedOrMissing) {
 				lhsSha = args.lhs.sha;
 			}
 
-			if (args.rhs.sha && args.rhs.sha !== GitService.deletedOrMissingSha) {
+			if (args.rhs.sha && args.rhs.sha !== GitRevision.deletedOrMissing) {
 				// Ensure that the file still exists in this commit
 				const status = await Container.git.getFileStatusForCommit(
 					args.repoPath,
@@ -103,7 +104,7 @@ export class DiffWithCommand extends ActiveEditorCommand {
 					args.rhs.sha,
 				);
 				if (status !== undefined && status.status === 'D') {
-					args.rhs.sha = GitService.deletedOrMissingSha;
+					args.rhs.sha = GitRevision.deletedOrMissing;
 				} else {
 					rhsSha = args.rhs.sha;
 				}
@@ -114,11 +115,11 @@ export class DiffWithCommand extends ActiveEditorCommand {
 				Container.git.getVersionedUri(args.repoPath, args.rhs.uri.fsPath, args.rhs.sha),
 			]);
 
-			let rhsSuffix = GitService.shortenSha(rhsSha, { strings: { uncommitted: 'Working Tree' } }) || '';
+			let rhsSuffix = GitRevision.shorten(rhsSha, { strings: { uncommitted: 'Working Tree' } }) || '';
 			if (rhs === undefined) {
-				if (GitService.isUncommitted(args.rhs.sha)) {
+				if (GitRevision.isUncommitted(args.rhs.sha)) {
 					rhsSuffix = 'deleted';
-				} else if (rhsSuffix.length === 0 && args.rhs.sha === GitService.deletedOrMissingSha) {
+				} else if (rhsSuffix.length === 0 && args.rhs.sha === GitRevision.deletedOrMissing) {
 					rhsSuffix = 'not in Working Tree';
 				} else {
 					rhsSuffix = `deleted${rhsSuffix.length === 0 ? '' : ` in ${rhsSuffix}`}`;
@@ -127,7 +128,7 @@ export class DiffWithCommand extends ActiveEditorCommand {
 				rhsSuffix = `added${rhsSuffix.length === 0 ? '' : ` in ${rhsSuffix}`}`;
 			}
 
-			let lhsSuffix = args.lhs.sha !== GitService.deletedOrMissingSha ? GitService.shortenSha(lhsSha) || '' : '';
+			let lhsSuffix = args.lhs.sha !== GitRevision.deletedOrMissing ? GitRevision.shorten(lhsSha) || '' : '';
 			if (lhs === undefined && args.rhs.sha.length === 0) {
 				if (rhs !== undefined) {
 					lhsSuffix = lhsSuffix.length === 0 ? '' : `not in ${lhsSuffix}`;
@@ -164,10 +165,10 @@ export class DiffWithCommand extends ActiveEditorCommand {
 			return await commands.executeCommand(
 				BuiltInCommands.Diff,
 				lhs === undefined
-					? GitUri.toRevisionUri(GitService.deletedOrMissingSha, args.lhs.uri.fsPath, args.repoPath)
+					? GitUri.toRevisionUri(GitRevision.deletedOrMissing, args.lhs.uri.fsPath, args.repoPath)
 					: lhs,
 				rhs === undefined
-					? GitUri.toRevisionUri(GitService.deletedOrMissingSha, args.rhs.uri.fsPath, args.repoPath)
+					? GitUri.toRevisionUri(GitRevision.deletedOrMissing, args.rhs.uri.fsPath, args.repoPath)
 					: rhs,
 				title,
 				args.showOptions,

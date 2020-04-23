@@ -12,79 +12,71 @@ import {
 } from '../commands';
 import { GlyphChars } from '../constants';
 import { Container } from '../container';
-import {
-	GitCommitType,
-	GitFileStatus,
-	GitLogCommit,
-	GitRevision,
-	GitService,
-	GitStatus,
-	GitStatusFile,
-	GitUri,
-} from '../git/gitService';
+import { GitCommitType, GitFileStatus, GitLogCommit, GitRevision, GitStatus, GitStatusFile } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Keys } from '../keyboard';
+import { CommandQuickPickItem, getQuickPickIgnoreFocusOut } from '../quickpicks';
 import { Iterables, Strings } from '../system';
-import { CommandQuickPickItem, getQuickPickIgnoreFocusOut } from './commonQuickPicks';
 
 export class OpenStatusFileCommandQuickPickItem extends CommandQuickPickItem {
-	readonly status: GitStatusFile;
 	private readonly commit: GitLogCommit;
 
-	constructor(private readonly _status: GitStatusFile, realIndexStatus?: GitFileStatus, item?: QuickPickItem) {
+	constructor(readonly status: GitStatusFile, realIndexStatus?: GitFileStatus, item?: QuickPickItem) {
 		super(
 			item || {
-				label: `${_status.staged ? '$(check)' : GlyphChars.Space.repeat(3)}${Strings.pad(
-					_status.getOcticon(),
+				label: `${status.staged ? '$(check)' : GlyphChars.Space.repeat(3)}${Strings.pad(
+					status.getOcticon(),
 					2,
 					2,
-				)} ${paths.basename(_status.fileName)}`,
-				description: _status.getFormattedDirectory(true),
+				)} ${paths.basename(status.fileName)}`,
+				description: status.getFormattedDirectory(true),
 			},
 		);
 
-		this.status = _status;
-		if (_status.indexStatus !== undefined) {
+		if (status.indexStatus !== undefined) {
 			this.commit = new GitLogCommit(
 				GitCommitType.LogFile,
-				_status.repoPath,
-				GitService.uncommittedStagedSha,
+				status.repoPath,
+				GitRevision.uncommittedStaged,
 				'You',
 				undefined,
 				new Date(),
 				new Date(),
 				'',
-				_status.fileName,
-				[_status],
-				_status.status,
-				_status.originalFileName,
+				status.fileName,
+				[status],
+				status.status,
+				status.originalFileName,
 				'HEAD',
-				_status.fileName,
+				status.fileName,
 			);
 		} else {
 			this.commit = new GitLogCommit(
 				GitCommitType.LogFile,
-				_status.repoPath,
-				GitService.uncommittedSha,
+				status.repoPath,
+				GitRevision.uncommitted,
 				'You',
 				undefined,
 				new Date(),
 				new Date(),
 				'',
-				_status.fileName,
-				[_status],
-				_status.status,
-				_status.originalFileName,
-				realIndexStatus !== undefined ? GitService.uncommittedStagedSha : 'HEAD',
-				_status.fileName,
+				status.fileName,
+				[status],
+				status.status,
+				status.originalFileName,
+				realIndexStatus !== undefined ? GitRevision.uncommittedStaged : 'HEAD',
+				status.fileName,
 			);
 		}
 	}
 
 	execute(options?: TextDocumentShowOptions): Thenable<TextEditor | undefined> {
-		return findOrOpenEditor(this._status.uri, options);
+		return findOrOpenEditor(this.status.uri, options);
 	}
 
 	async onDidPressKey(key: Keys): Promise<void> {
+		if (this.options?.suppressKeyPress) return;
+
 		const commandArgs: DiffWithPreviousCommandArgs = {
 			commit: this.commit,
 			line: 0,
@@ -93,11 +85,13 @@ export class OpenStatusFileCommandQuickPickItem extends CommandQuickPickItem {
 				preview: false,
 			},
 		};
-		await commands.executeCommand(
+		const result = commands.executeCommand(
 			Commands.DiffWithPrevious,
 			GitUri.fromFile(this.status, this.status.repoPath),
 			commandArgs,
 		);
+		this.options?.onDidPressKey?.(key, result);
+		void (await result);
 	}
 }
 
@@ -389,7 +383,7 @@ export class RepoStatusQuickPick {
 							GlyphChars.Space
 						}$(git-branch) ${status.branch}${
 							status.sha
-								? ` (since ${GlyphChars.Space}$(git-commit) ${GitService.shortenSha(status.sha)})`
+								? ` (since ${GlyphChars.Space}$(git-commit) ${GitRevision.shorten(status.sha)})`
 								: ''
 						}`,
 					},

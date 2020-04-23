@@ -1,14 +1,15 @@
 'use strict';
 import * as paths from 'path';
 import { commands, TextDocumentShowOptions, TextEditor, Uri } from 'vscode';
+import { ActiveEditorCommand, command, Commands, getCommandUri } from './common';
 import { GlyphChars } from '../constants';
 import { Container } from '../container';
-import { GitService, GitUri } from '../git/gitService';
+import { DiffWithCommandArgs } from './diffWith';
+import { GitRevision } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Messages } from '../messages';
 import { CommandQuickPickItem, ReferencesQuickPick } from '../quickpicks';
 import { Strings } from '../system';
-import { ActiveEditorCommand, command, Commands, getCommandUri } from './common';
-import { DiffWithCommandArgs } from './diffWith';
 
 export interface DiffWithRefCommandArgs {
 	line?: number;
@@ -60,7 +61,7 @@ export class DiffWithRefCommand extends ActiveEditorCommand {
 			const rename = files.find(s => s.fileName === fileName);
 			if (rename !== undefined && rename.originalFileName !== undefined) {
 				renamedUri = GitUri.resolveToUri(rename.originalFileName, gitUri.repoPath);
-				renamedTitle = `${paths.basename(rename.originalFileName)} (${GitService.shortenSha(ref)})`;
+				renamedTitle = `${paths.basename(rename.originalFileName)} (${GitRevision.shorten(ref)})`;
 			}
 		}
 
@@ -69,7 +70,7 @@ export class DiffWithRefCommand extends ActiveEditorCommand {
 			lhs: {
 				sha: pick.remote ? `remotes/${ref}` : ref,
 				uri: renamedUri || (gitUri as Uri),
-				title: renamedTitle || `${paths.basename(gitUri.fsPath)} (${GitService.shortenSha(ref)})`,
+				title: renamedTitle || `${paths.basename(gitUri.fsPath)} (${GitRevision.shorten(ref)})`,
 			},
 			rhs: {
 				sha: '',

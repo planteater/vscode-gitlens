@@ -1,7 +1,8 @@
 'use strict';
 import { commands, TextDocumentShowOptions, TextEditor, Uri, window } from 'vscode';
 import { Container } from '../container';
-import { GitService, GitUri } from '../git/gitService';
+import { GitRevision } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { ActiveEditorCommand, command, CommandContext, Commands, getCommandUri } from './common';
 import { DiffWithCommandArgs } from './diffWith';
 import { Messages } from '../messages';
@@ -56,7 +57,7 @@ export class DiffWithWorkingCommand extends ActiveEditorCommand {
 		// if (args.commit === undefined || args.commit.isUncommitted) {
 		// If the sha is missing, just let the user know the file matches
 		if (gitUri.sha === undefined) return window.showInformationMessage('File matches the working tree');
-		if (gitUri.sha === GitService.deletedOrMissingSha) {
+		if (gitUri.sha === GitRevision.deletedOrMissing) {
 			return window.showWarningMessage('Unable to open compare. File has been deleted from the working tree');
 		}
 
@@ -67,7 +68,7 @@ export class DiffWithWorkingCommand extends ActiveEditorCommand {
 				const diffArgs: DiffWithCommandArgs = {
 					repoPath: gitUri.repoPath,
 					lhs: {
-						sha: GitService.uncommittedStagedSha,
+						sha: GitRevision.uncommittedStaged,
 						uri: gitUri.documentUri(),
 					},
 					rhs: {

@@ -2,7 +2,8 @@
 import { commands, Range, TextEditor, Uri, window } from 'vscode';
 import { GlyphChars } from '../constants';
 import { Container } from '../container';
-import { GitService, GitUri, RemoteResourceType } from '../git/gitService';
+import { GitRevision, RemoteResourceType } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { CommandQuickPickItem, ReferencesQuickPick, ReferencesQuickPickIncludes } from '../quickpicks';
 import {
@@ -68,7 +69,7 @@ export class OpenFileInRemoteCommand extends ActiveEditorCommand {
 					: undefined;
 			let sha = args.sha || gitUri.sha;
 
-			if (args.branch === undefined && sha !== undefined && !GitService.isSha(sha) && remotes.length !== 0) {
+			if (args.branch === undefined && sha !== undefined && !GitRevision.isSha(sha) && remotes.length !== 0) {
 				const [remotePart, branchPart] = Strings.splitSingle(sha, '/');
 				if (branchPart !== undefined) {
 					if (remotes.some(r => r.name === remotePart)) {

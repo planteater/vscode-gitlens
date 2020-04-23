@@ -2,7 +2,7 @@
 import { TreeItem, TreeItemCollapsibleState } from 'vscode';
 import { getRepoPathOrPrompt } from '../../commands';
 import { CommandContext, GlyphChars, NamedRef, setCommandContext } from '../../constants';
-import { GitService } from '../../git/gitService';
+import { GitRevision } from '../../git/git';
 import { ReferencesQuickPick, ReferencesQuickPickIncludes } from '../../quickpicks';
 import { debug, gate, Iterables, log, Promises } from '../../system';
 import { CompareView } from '../compareView';
@@ -213,6 +213,6 @@ export class CompareNode extends ViewNode<CompareView> {
 	}
 
 	private getRefName(ref: string | NamedRef) {
-		return typeof ref === 'string' ? GitService.shortenSha(ref)! : ref.label || GitService.shortenSha(ref.ref)!;
+		return typeof ref === 'string' ? GitRevision.shorten(ref)! : ref.label || GitRevision.shorten(ref.ref)!;
 	}
 }

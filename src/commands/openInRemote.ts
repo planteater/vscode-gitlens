@@ -1,10 +1,10 @@
 'use strict';
 import { TextEditor, Uri } from 'vscode';
 import { GlyphChars } from '../constants';
-import { GitRemote, GitService, RemoteProvider, RemoteResource, RemoteResourceType } from '../git/gitService';
+import { GitRemote, GitRevision, RemoteProvider, RemoteResource, RemoteResourceType } from '../git/git';
 import { Logger } from '../logger';
 import { Messages } from '../messages';
-import { CommandQuickPickItem, OpenRemoteCommandQuickPickItem, RemotesQuickPick } from '../quickpicks';
+import { CommandQuickPickItem, CopyOrOpenRemoteCommandQuickPickItem, RemotesQuickPick } from '../quickpicks';
 import { Strings } from '../system';
 import { ActiveEditorCommand, command, Commands } from './common';
 
@@ -39,7 +39,7 @@ export class OpenInRemoteCommand extends ActiveEditorCommand {
 			const remote = args.remotes.length === 1 ? args.remotes[0] : args.remotes.find(r => r.default);
 			if (remote != null) {
 				this.ensureRemoteBranchName(args);
-				const command = new OpenRemoteCommandQuickPickItem(remote, args.resource, args.clipboard);
+				const command = new CopyOrOpenRemoteCommandQuickPickItem(remote, args.resource, args.clipboard);
 				return await command.execute();
 			}
 
@@ -53,7 +53,7 @@ export class OpenInRemoteCommand extends ActiveEditorCommand {
 					break;
 
 				case RemoteResourceType.Commit:
-					placeHolder = `${verb} commit ${GitService.shortenSha(args.resource.sha)} ${suffix}`;
+					placeHolder = `${verb} commit ${GitRevision.shorten(args.resource.sha)} ${suffix}`;
 					break;
 
 				case RemoteResourceType.File:
@@ -75,7 +75,7 @@ export class OpenInRemoteCommand extends ActiveEditorCommand {
 						}
 					} else {
 						const shortFileSha =
-							args.resource.sha === undefined ? '' : GitService.shortenSha(args.resource.sha);
+							args.resource.sha === undefined ? '' : GitRevision.shorten(args.resource.sha);
 						const shaSuffix = shortFileSha ? ` ${Strings.pad(GlyphChars.Dot, 1, 1)} ${shortFileSha}` : '';
 
 						placeHolder = `${verb} ${args.resource.fileName}${shaSuffix} ${suffix}`;

@@ -17,7 +17,8 @@ import {
 } from 'vscode';
 import { BuiltInCommands, DocumentSchemes, ImageMimetypes } from '../constants';
 import { Container } from '../container';
-import { GitBranch, GitCommit, GitContributor, GitFile, GitRemote, GitUri, Repository } from '../git/gitService';
+import { GitBranch, GitCommit, GitContributor, GitFile, GitRemote, Repository } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { CommandQuickPickItem, RepositoriesQuickPick } from '../quickpicks';
 // import { Telemetry } from '../telemetry';
@@ -90,12 +91,12 @@ export enum Commands {
 	ShowLineHistoryView = 'gitlens.showLineHistoryView',
 	ShowLastQuickPick = 'gitlens.showLastQuickPick',
 	ShowQuickBranchHistory = 'gitlens.showQuickBranchHistory',
-	ShowQuickCommitDetails = 'gitlens.showQuickCommitDetails',
-	ShowQuickCommitFileDetails = 'gitlens.showQuickCommitFileDetails',
+	ShowQuickCommit = 'gitlens.showQuickCommitDetails',
+	ShowQuickCommitFile = 'gitlens.showQuickCommitFileDetails',
 	ShowQuickCurrentBranchHistory = 'gitlens.showQuickRepoHistory',
 	ShowQuickFileHistory = 'gitlens.showQuickFileHistory',
 	ShowQuickRepoStatus = 'gitlens.showQuickRepoStatus',
-	ShowQuickRevisionDetails = 'gitlens.showQuickRevisionDetails',
+	ShowQuickCommitRevision = 'gitlens.showQuickRevisionDetails',
 	ShowQuickStashList = 'gitlens.showQuickStashList',
 	ShowRepositoriesView = 'gitlens.showRepositoriesView',
 	ShowSearchView = 'gitlens.showSearchView',

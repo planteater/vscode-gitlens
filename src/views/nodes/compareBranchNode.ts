@@ -3,11 +3,12 @@ import { ThemeIcon, TreeItem, TreeItemCollapsibleState } from 'vscode';
 import { BranchComparison, BranchComparisons, GlyphChars, WorkspaceState } from '../../constants';
 import { ResourceType, ViewNode } from './viewNode';
 import { RepositoriesView } from '../repositoriesView';
-import { GitBranch, GitRevision, GitService, GitUri } from '../../git/gitService';
+import { GitBranch, GitRevision } from '../../git/git';
+import { GitUri } from '../../git/gitUri';
 import { CommandQuickPickItem, ReferencesQuickPick } from '../../quickpicks';
 import { CommitsQueryResults, ResultsCommitsNode } from './resultsCommitsNode';
 import { Container } from '../../container';
-import { debug, gate, log, Mutable, Strings } from '../../system';
+import { debug, gate, log, Strings } from '../../system';
 import { FilesQueryResults, ResultsFilesNode } from './resultsFilesNode';
 import { ViewShowBranchComparison } from '../../config';
 import { RepositoryNode } from './repositoryNode';
@@ -86,7 +87,7 @@ export class CompareBranchNode extends ViewNode<RepositoriesView> {
 			state = TreeItemCollapsibleState.None;
 		} else {
 			label = `${this.branch.name}${this.compareWithWorkingTree ? ' (working)' : ''}`;
-			description = `${GlyphChars.ArrowLeftRightLong}${GlyphChars.Space} ${GitService.shortenSha(
+			description = `${GlyphChars.ArrowLeftRightLong}${GlyphChars.Space} ${GitRevision.shorten(
 				this._compareWith.ref,
 				{
 					strings: {

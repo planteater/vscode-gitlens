@@ -521,7 +521,7 @@
 				},
 				"gitlens.gitCommands.search.showResultsInView": {
 					"type": "boolean",
-					"default": true,
+					"default": false,
 					"markdownDescription": "Specifies whether to show the commit search results in the _Search Commits_ view or directly within the quick pick menu",
 					"scope": "window"
 				},

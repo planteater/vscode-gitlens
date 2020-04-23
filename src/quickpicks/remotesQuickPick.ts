@@ -5,26 +5,24 @@ import { GlyphChars } from '../constants';
 import {
 	getNameFromRemoteResource,
 	GitRemote,
-	GitService,
-	GitUri,
+	GitRevision,
 	RemoteProvider,
 	RemoteResource,
 	RemoteResourceType,
-} from '../git/gitService';
-import { CommandQuickPickItem, getQuickPickIgnoreFocusOut } from './commonQuickPicks';
+} from '../git/git';
+import { GitUri } from '../git/gitUri';
+import { CommandQuickPickItem, getQuickPickIgnoreFocusOut } from '../quickpicks';
 
-export class OpenRemoteCommandQuickPickItem extends CommandQuickPickItem {
+export class CopyOrOpenRemoteCommandQuickPickItem extends CommandQuickPickItem {
 	constructor(
 		private readonly remote: GitRemote<RemoteProvider>,
 		private readonly resource: RemoteResource,
-		public readonly clipboard?: boolean,
+		private readonly clipboard?: boolean,
 	) {
 		super(
 			{
 				label: clipboard
-					? `$(link-external) Copy ${getNameFromRemoteResource(resource)} Url to Clipboard from ${
-							remote.provider.name
-					  }`
+					? `$(clippy) Copy ${remote.provider.name} ${getNameFromRemoteResource(resource)} Url`
 					: `$(link-external) Open ${getNameFromRemoteResource(resource)} on ${remote.provider.name}`,
 				description: `$(repo) ${remote.provider.path}`,
 			},
@@ -38,8 +36,13 @@ export class OpenRemoteCommandQuickPickItem extends CommandQuickPickItem {
 	}
 }
 
-export class OpenRemotesCommandQuickPickItem extends CommandQuickPickItem {
-	constructor(remotes: GitRemote<RemoteProvider>[], resource: RemoteResource, goBackCommand?: CommandQuickPickItem) {
+export class CopyOrOpenRemotesCommandQuickPickItem extends CommandQuickPickItem {
+	constructor(
+		remotes: GitRemote<RemoteProvider>[],
+		resource: RemoteResource,
+		clipboard?: boolean,
+		goBackCommand?: CommandQuickPickItem,
+	) {
 		const name = getNameFromRemoteResource(resource);
 
 		let description;
@@ -53,7 +56,7 @@ export class OpenRemotesCommandQuickPickItem extends CommandQuickPickItem {
 				break;
 
 			case RemoteResourceType.Commit:
-				description = `$(git-commit) ${GitService.shortenSha(resource.sha)}`;
+				description = `$(git-commit) ${GitRevision.shorten(resource.sha)}`;
 				break;
 
 			case RemoteResourceType.File:
@@ -80,7 +83,7 @@ export class OpenRemotesCommandQuickPickItem extends CommandQuickPickItem {
 						}$(git-commit) ${resource.commit.shortSha}`;
 					}
 				} else {
-					const shortFileSha = resource.sha === undefined ? '' : GitService.shortenSha(resource.sha);
+					const shortFileSha = resource.sha === undefined ? '' : GitRevision.shorten(resource.sha);
 					description = `${GitUri.getFormattedPath(resource.fileName)}${
 						shortFileSha ? ` from ${GlyphChars.Space}$(git-commit) ${shortFileSha}` : ''
 					}`;
@@ -92,44 +95,37 @@ export class OpenRemotesCommandQuickPickItem extends CommandQuickPickItem {
 				break;
 		}
 
-		let remote = remotes.length === 1 ? remotes[0] : remotes.find(r => r.default);
-		if (remote != null) {
-			const commandArgs: OpenInRemoteCommandArgs = {
-				remotes: remotes,
-				resource: resource,
-				goBackCommand: goBackCommand,
-			};
-			super(
-				{
-					label: `$(link-external) Open ${name} on ${remote.provider.name}`,
-					description: `${description} in ${GlyphChars.Space}$(repo) ${remote.provider.path}`,
-				},
-				Commands.OpenInRemote,
-				[undefined, commandArgs],
-			);
-
-			return;
-		}
-
-		remote = remotes[0];
-		let providerName = remote.provider.name;
-		// Only use the real provider name if there is only 1 type of provider
-		if (!remotes.every(r => r.provider.name === providerName)) {
-			providerName = 'Remote';
-		}
-
+		const providers = GitRemote.getHighlanderProviders(remotes);
 		const commandArgs: OpenInRemoteCommandArgs = {
 			remotes: remotes,
 			resource: resource,
+			clipboard: clipboard,
 			goBackCommand: goBackCommand,
 		};
 		super(
 			{
-				label: `$(link-external) Open ${name} on ${providerName}${GlyphChars.Ellipsis}`,
-				description: `${description}`,
+				label: clipboard
+					? `$(clippy) Copy ${
+							providers?.length === 1
+								? providers[0].name
+								: `${providers?.length ? providers[0].name : 'Remote'}`
+					  } ${getNameFromRemoteResource(resource)} Url${providers?.length === 1 ? '' : GlyphChars.Ellipsis}`
+					: `$(link-external) Open ${name} on ${
+							providers?.length === 1
+								? providers[0].name
+								: `${providers?.length ? providers[0].name : 'Remote'}${GlyphChars.Ellipsis}`
+					  }`,
+				// description: `${description} in ${GlyphChars.Space}$(repo) ${remote.provider.path}`,
+				description: description, // providers?.length === 1 ? providers[0].path : undefined,
 			},
 			Commands.OpenInRemote,
 			[undefined, commandArgs],
+			{
+				onDidPressKey: async (key, result) => {
+					await result;
+					window.showInformationMessage('Url copied to the clipboard');
+				},
+			},
 		);
 	}
 }
@@ -141,9 +137,9 @@ export class RemotesQuickPick {
 		resource: RemoteResource,
 		clipboard?: boolean,
 		goBackCommand?: CommandQuickPickItem,
-	): Promise<OpenRemoteCommandQuickPickItem | CommandQuickPickItem | undefined> {
-		const items = remotes.map(r => new OpenRemoteCommandQuickPickItem(r, resource, clipboard)) as (
-			| OpenRemoteCommandQuickPickItem
+	): Promise<CopyOrOpenRemoteCommandQuickPickItem | CommandQuickPickItem | undefined> {
+		const items = remotes.map(r => new CopyOrOpenRemoteCommandQuickPickItem(r, resource, clipboard)) as (
+			| CopyOrOpenRemoteCommandQuickPickItem
 			| CommandQuickPickItem
 		)[];
 

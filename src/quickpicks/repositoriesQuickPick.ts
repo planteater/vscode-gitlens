@@ -1,9 +1,8 @@
 'use strict';
 import { window } from 'vscode';
 import { Container } from '../container';
+import { CommandQuickPickItem, getQuickPickIgnoreFocusOut, RepositoryQuickPickItem } from '../quickpicks';
 import { Iterables } from '../system';
-import { CommandQuickPickItem, getQuickPickIgnoreFocusOut } from './commonQuickPicks';
-import { RepositoryQuickPickItem } from './gitQuickPicks';
 
 export class RepositoriesQuickPick {
 	static async show(

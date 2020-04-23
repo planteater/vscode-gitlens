@@ -1,7 +1,8 @@
 'use strict';
 import { commands, TextDocumentShowOptions, TextEditor, Uri } from 'vscode';
 import { Container } from '../container';
-import { GitCommit, GitService, GitUri } from '../git/gitService';
+import { GitCommit, GitRevision } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { Messages } from '../messages';
 import { ActiveEditorCommand, command, CommandContext, Commands, findOrOpenEditor, getCommandUri } from './common';
@@ -88,7 +89,7 @@ export class DiffWithPreviousCommand extends ActiveEditorCommand {
 				diffUris.previous = GitUri.fromFile(
 					diffUris.current.fileName,
 					diffUris.current.repoPath!,
-					GitService.deletedOrMissingSha,
+					GitRevision.deletedOrMissing,
 				);
 			}
 

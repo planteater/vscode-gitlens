@@ -2,7 +2,8 @@
 import { commands, TextEditor, Uri } from 'vscode';
 import { Container } from '../container';
 import { ActiveEditorCommand, command, Commands, getCommandUri } from './common';
-import { GitUri, SearchPattern } from '../git/gitService';
+import { SearchPattern } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { GitCommandsCommandArgs } from '../commands';
 import { Messages } from '../messages';
 import { Iterables } from '../system';

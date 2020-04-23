@@ -3,12 +3,17 @@ import { CancellationTokenSource, window } from 'vscode';
 import { Commands, ShowQuickBranchHistoryCommandArgs } from '../commands';
 import { GlyphChars } from '../constants';
 import { Container } from '../container';
-import { GitLog, GitUri, RemoteResourceType } from '../git/gitService';
+import { GitLog, RemoteResourceType } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { KeyNoopCommand } from '../keyboard';
+import {
+	CommandQuickPickItem,
+	CommitQuickPickItem,
+	CopyOrOpenRemotesCommandQuickPickItem,
+	getQuickPickIgnoreFocusOut,
+	showQuickPickProgress,
+} from '../quickpicks';
 import { Iterables } from '../system';
-import { CommandQuickPickItem, getQuickPickIgnoreFocusOut, showQuickPickProgress } from './commonQuickPicks';
-import { OpenRemotesCommandQuickPickItem } from './remotesQuickPick';
-import { CommitQuickPickItem } from './gitQuickPicks';
 
 export class BranchHistoryQuickPick {
 	static showProgress(branch: string) {
@@ -55,12 +60,13 @@ export class BranchHistoryQuickPick {
 			items.splice(
 				0,
 				0,
-				new OpenRemotesCommandQuickPickItem(
+				new CopyOrOpenRemotesCommandQuickPickItem(
 					remotes,
 					{
 						type: RemoteResourceType.Branch,
 						branch: branch,
 					},
+					false,
 					currentCommand,
 				),
 			);

@@ -2,7 +2,8 @@
 import { commands, TextEditor, Uri, window } from 'vscode';
 import { GlyphChars } from '../constants';
 import { Container } from '../container';
-import { GitUri, RemoteResourceType } from '../git/gitService';
+import { RemoteResourceType } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { CommandQuickPickItem, ReferencesQuickPick, ReferencesQuickPickIncludes } from '../quickpicks';
 import {

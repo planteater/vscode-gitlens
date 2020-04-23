@@ -1,7 +1,8 @@
 'use strict';
 import { commands, TextDocumentShowOptions, TextEditor, Uri, window } from 'vscode';
 import { Container } from '../container';
-import { GitCommit, GitService, GitUri } from '../git/gitService';
+import { GitCommit, GitRevision } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { Messages } from '../messages';
 import { ActiveEditorCommand, command, Commands, getCommandUri } from './common';
@@ -52,7 +53,7 @@ export class DiffLineWithWorkingCommand extends ActiveEditorCommand {
 					args.commit = args.commit.with({
 						sha:
 							status !== undefined && status.indexStatus !== undefined
-								? GitService.uncommittedStagedSha
+								? GitRevision.uncommittedStaged
 								: args.commit.previousSha!,
 						fileName: args.commit.previousFileName!,
 						originalFileName: null,

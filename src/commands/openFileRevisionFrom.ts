@@ -1,7 +1,8 @@
 'use strict';
 import { Range, TextDocumentShowOptions, TextEditor, Uri } from 'vscode';
 import { GlyphChars } from '../constants';
-import { GitBranch, GitReference, GitTag, GitUri } from '../git/gitService';
+import { GitBranch, GitReference, GitTag } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { CommandQuickPickItem, ReferencesQuickPick } from '../quickpicks';
 import { Strings } from '../system';
 import { ActiveEditorCommand, command, Commands, findOrOpenEditor, getCommandUri } from './common';

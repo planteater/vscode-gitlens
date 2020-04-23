@@ -1,7 +1,7 @@
 'use strict';
 import * as paths from 'path';
 import { commands, TextEditor, Uri } from 'vscode';
-import { GitUri } from '../git/gitService';
+import { GitUri } from '../git/gitUri';
 import { ActiveEditorCommand, command, Commands, getCommandUri, openWorkspace } from './common';
 import { toGitLensFSUri } from '../git/fsProvider';
 import { BuiltInCommands } from '../constants';

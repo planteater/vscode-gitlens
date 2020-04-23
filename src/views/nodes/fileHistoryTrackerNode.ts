@@ -3,7 +3,7 @@ import { Disposable, TextEditor, TreeItem, TreeItemCollapsibleState, window } fr
 import { UriComparer } from '../../comparers';
 import { GlyphChars } from '../../constants';
 import { Container } from '../../container';
-import { GitCommitish, GitUri } from '../../git/gitService';
+import { GitCommitish, GitUri } from '../../git/gitUri';
 import { Logger } from '../../logger';
 import { CommandQuickPickItem, ReferencesQuickPick } from '../../quickpicks';
 import { debug, Functions, gate, log } from '../../system';

@@ -2,7 +2,8 @@
 import { commands, Range, TextEditor, Uri, window } from 'vscode';
 import { GlyphChars } from '../constants';
 import { Container } from '../container';
-import { GitBranch, GitLog, GitReference, GitTag, GitUri } from '../git/gitService';
+import { GitBranch, GitLog, GitReference, GitTag } from '../git/git';
+import { GitUri } from '../git/gitUri';
 import { Logger } from '../logger';
 import { Messages } from '../messages';
 import {
@@ -13,7 +14,7 @@ import {
 } from '../quickpicks';
 import { Iterables, Strings } from '../system';
 import { ActiveEditorCachedCommand, command, CommandContext, Commands, getCommandUri } from './common';
-import { ShowQuickCommitFileDetailsCommandArgs } from './showQuickCommitFileDetails';
+import { ShowQuickCommitFileCommandArgs } from './showQuickCommitFile';
 
 export interface ShowQuickFileHistoryCommandArgs {
 	reference?: GitBranch | GitTag | GitReference;
@@ -174,14 +175,14 @@ export class ShowQuickFileHistoryCommand extends ActiveEditorCachedCommand {
 
 			if (pick instanceof CommandQuickPickItem) return pick.execute();
 
-			const commandArgs: ShowQuickCommitFileDetailsCommandArgs = {
+			const commandArgs: ShowQuickCommitFileCommandArgs = {
 				commit: pick.item,
 				fileLog: args.log,
 				sha: pick.item.sha,
 				goBackCommand: currentCommand,
 			};
 
-			return commands.executeCommand(Commands.ShowQuickCommitFileDetails, pick.item.toGitUri(), commandArgs);
+			return commands.executeCommand(Commands.ShowQuickCommitFile, pick.item.toGitUri(), commandArgs);
 		} catch (ex) {
 			Logger.error(ex, 'ShowQuickFileHistoryCommand');
 			return Messages.showGenericErrorMessage('Unable to show file history');
