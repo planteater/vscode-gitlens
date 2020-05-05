@@ -9,12 +9,58 @@ const CircularDependencyPlugin = require('circular-dependency-plugin');
 const CspHtmlPlugin = require('csp-html-webpack-plugin');
 // const ESLintPlugin = require('eslint-webpack-plugin');
 const ForkTsCheckerPlugin = require('fork-ts-checker-webpack-plugin');
-const HtmlExcludeAssetsPlugin = require('html-webpack-exclude-assets-plugin');
-const HtmlInlineSourcePlugin = require('html-webpack-inline-source-plugin');
 const HtmlPlugin = require('html-webpack-plugin');
+const HtmlSkipAssetsPlugin = require('html-webpack-skip-assets-plugin').HtmlWebpackSkipAssetsPlugin;
 const ImageminPlugin = require('imagemin-webpack-plugin').default;
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+
+class InlineChunkHtmlPlugin {
+	constructor(htmlPlugin, patterns) {
+		this.htmlPlugin = htmlPlugin;
+		this.patterns = patterns;
+	}
+
+	getInlinedTag(publicPath, assets, tag) {
+		if (
+			(tag.tagName !== 'script' || !(tag.attributes && tag.attributes.src)) &&
+			(tag.tagName !== 'link' || !(tag.attributes && tag.attributes.href))
+		) {
+			return tag;
+		}
+
+		let chunkName = tag.tagName === 'link' ? tag.attributes.href : tag.attributes.src;
+		if (publicPath) {
+			chunkName = chunkName.replace(publicPath, '');
+		}
+		if (!this.patterns.some(pattern => chunkName.match(pattern))) {
+			return tag;
+		}
+
+		const asset = assets[chunkName];
+		if (asset == null) {
+			return tag;
+		}
+
+		return { tagName: tag.tagName === 'link' ? 'style' : tag.tagName, innerHTML: asset.source(), closeTag: true };
+	}
+
+	apply(compiler) {
+		let publicPath = compiler.options.output.publicPath || '';
+		if (publicPath && !publicPath.endsWith('/')) {
+			publicPath += '/';
+		}
+
+		compiler.hooks.compilation.tap('InlineChunkHtmlPlugin', compilation => {
+			const getInlinedTagFn = tag => this.getInlinedTag(publicPath, compilation.assets, tag);
+
+			this.htmlPlugin.getHooks(compilation).alterAssetTagGroups.tap('InlineChunkHtmlPlugin', assets => {
+				assets.headTags = assets.headTags.map(getInlinedTagFn);
+				assets.bodyTags = assets.bodyTags.map(getInlinedTagFn);
+			});
+		});
+	}
+}
 
 module.exports = function (env, argv) {
 	env = env || {};
@@ -185,7 +231,6 @@ function getWebviewsConfig(env) {
 			template: 'settings/index.html',
 			filename: path.resolve(__dirname, 'dist/webviews/settings.html'),
 			inject: true,
-			inlineSource: env.production ? '.css$' : undefined,
 			cspPlugin: {
 				enabled: true,
 				policy: cspPolicy,
@@ -213,7 +258,6 @@ function getWebviewsConfig(env) {
 			template: 'welcome/index.html',
 			filename: path.resolve(__dirname, 'dist/webviews/welcome.html'),
 			inject: true,
-			inlineSource: env.production ? '.css$' : undefined,
 			cspPlugin: {
 				enabled: true,
 				policy: cspPolicy,
@@ -235,7 +279,7 @@ function getWebviewsConfig(env) {
 				  }
 				: false,
 		}),
-		new HtmlExcludeAssetsPlugin(),
+		new HtmlSkipAssetsPlugin(),
 		new CspHtmlPlugin(),
 		new ImageminPlugin({
 			disable: !env.optimizeImages,
@@ -254,7 +298,7 @@ function getWebviewsConfig(env) {
 			},
 			svgo: null,
 		}),
-		new HtmlInlineSourcePlugin(),
+		new InlineChunkHtmlPlugin(HtmlPlugin, env.production ? ['\\.css$'] : []),
 	];
 
 	return {
