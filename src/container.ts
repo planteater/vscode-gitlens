@@ -27,6 +27,7 @@ import { CompareView } from './views/compareView';
 import { FileHistoryView } from './views/fileHistoryView';
 import { HistoryView } from './views/historyView';
 import { LineHistoryView } from './views/lineHistoryView';
+import { RemotesView } from './views/remotesView';
 import { RepositoriesView } from './views/repositoriesView';
 import { SearchView } from './views/searchView';
 import { TagsView } from './views/tagsView';
@@ -66,6 +67,7 @@ export class Container {
 
 		context.subscriptions.push((this._branchesView = new BranchesView()));
 		context.subscriptions.push((this._historyView = new HistoryView()));
+		context.subscriptions.push((this._remotesView = new RemotesView()));
 		context.subscriptions.push((this._tagsView = new TagsView()));
 
 		if (config.views.compare.enabled) {
@@ -282,6 +284,15 @@ export class Container {
 	private static _lineTracker: GitLineTracker;
 	static get lineTracker() {
 		return this._lineTracker;
+	}
+
+	private static _remotesView: RemotesView | undefined;
+	static get remotesView() {
+		if (this._remotesView === undefined) {
+			this._context.subscriptions.push((this._remotesView = new RemotesView()));
+		}
+
+		return this._remotesView;
 	}
 
 	private static _repositoriesView: RepositoriesView | undefined;
