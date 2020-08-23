@@ -24,6 +24,7 @@ import { GitDocumentTracker } from './trackers/gitDocumentTracker';
 import { GitLineTracker } from './trackers/gitLineTracker';
 import { BranchesView } from './views/branchesView';
 import { CompareView } from './views/compareView';
+import { ContributorsView } from './views/contributorsView';
 import { FileHistoryView } from './views/fileHistoryView';
 import { HistoryView } from './views/historyView';
 import { LineHistoryView } from './views/lineHistoryView';
@@ -66,6 +67,7 @@ export class Container {
 		context.subscriptions.push((this._welcomeWebview = new WelcomeWebview()));
 
 		context.subscriptions.push((this._branchesView = new BranchesView()));
+		context.subscriptions.push((this._contributorsView = new ContributorsView()));
 		context.subscriptions.push((this._historyView = new HistoryView()));
 		context.subscriptions.push((this._remotesView = new RemotesView()));
 		context.subscriptions.push((this._tagsView = new TagsView()));
@@ -209,6 +211,15 @@ export class Container {
 	private static _context: ExtensionContext;
 	static get context() {
 		return this._context;
+	}
+
+	private static _contributorsView: ContributorsView | undefined;
+	static get contributorsView() {
+		if (this._contributorsView === undefined) {
+			this._context.subscriptions.push((this._contributorsView = new ContributorsView()));
+		}
+
+		return this._contributorsView;
 	}
 
 	private static _fileAnnotationController: FileAnnotationController;
