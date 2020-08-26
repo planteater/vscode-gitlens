@@ -23,10 +23,10 @@ import { StatusBarController } from './statusbar/statusBarController';
 import { GitDocumentTracker } from './trackers/gitDocumentTracker';
 import { GitLineTracker } from './trackers/gitLineTracker';
 import { BranchesView } from './views/branchesView';
+import { CommitsView } from './views/commitsView';
 import { CompareView } from './views/compareView';
 import { ContributorsView } from './views/contributorsView';
 import { FileHistoryView } from './views/fileHistoryView';
-import { HistoryView } from './views/historyView';
 import { LineHistoryView } from './views/lineHistoryView';
 import { RemotesView } from './views/remotesView';
 import { RepositoriesView } from './views/repositoriesView';
@@ -68,8 +68,8 @@ export class Container {
 		context.subscriptions.push((this._welcomeWebview = new WelcomeWebview()));
 
 		context.subscriptions.push((this._branchesView = new BranchesView()));
+		context.subscriptions.push((this._commitsView = new CommitsView()));
 		context.subscriptions.push((this._contributorsView = new ContributorsView()));
-		context.subscriptions.push((this._historyView = new HistoryView()));
 		context.subscriptions.push((this._remotesView = new RemotesView()));
 		context.subscriptions.push((this._stashesView = new StashesView()));
 		context.subscriptions.push((this._tagsView = new TagsView()));
@@ -193,6 +193,15 @@ export class Container {
 		return this._branchesView;
 	}
 
+	private static _commitsView: CommitsView | undefined;
+	static get commitsView() {
+		if (this._commitsView === undefined) {
+			this._context.subscriptions.push((this._commitsView = new CommitsView()));
+		}
+
+		return this._commitsView;
+	}
+
 	private static _compareView: CompareView | undefined;
 	static get compareView() {
 		if (this._compareView === undefined) {
@@ -259,15 +268,6 @@ export class Container {
 			Logger.error(ex);
 			return undefined;
 		}
-	}
-
-	private static _historyView: HistoryView | undefined;
-	static get historyView() {
-		if (this._historyView === undefined) {
-			this._context.subscriptions.push((this._historyView = new HistoryView()));
-		}
-
-		return this._historyView;
 	}
 
 	private static _keyboard: Keyboard;
