@@ -9,6 +9,12 @@ import { Messages } from '../messages';
 import { ActiveEditorCommand, command, Commands, EditorCommand } from './common';
 
 @command()
+export interface ToggleFileBlameCommandArgs {
+	on?: boolean;
+	sha?: string;
+	type?: FileAnnotationType;
+}
+
 export class ClearFileAnnotationsCommand extends EditorCommand {
 	constructor() {
 		super([Commands.ClearFileAnnotations, Commands.ComputingFileAnnotations]);
